@@ -5,7 +5,7 @@ transformers
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.4.0+cpu
 numpy
-
+psycopg2-binary
 pytest
 
 lingua-language-detector

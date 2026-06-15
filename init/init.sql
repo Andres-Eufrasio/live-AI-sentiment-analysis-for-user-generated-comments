@@ -59,7 +59,6 @@ CREATE TABLE comment (
 
 -- ------------------------------------------------------------
 -- User_report
--- Submitted by a user about a specific comment
 -- ------------------------------------------------------------
 CREATE TABLE user_report (
     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -72,14 +71,11 @@ CREATE TABLE user_report (
 
 -- ------------------------------------------------------------
 -- Flag
--- Aggregates a comment, an optional user report, and
--- an optional AI prediction score into a single review unit
 -- ------------------------------------------------------------
 CREATE TABLE flag (
     id                  UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     comment_id          UUID    NOT NULL REFERENCES comment(id) ON DELETE CASCADE,
     user_report_id      UUID    REFERENCES user_report(id) ON DELETE SET NULL,
-    prediction_score    FLOAT   CHECK (prediction_score BETWEEN 0.0 AND 1.0)
 );
 
 -- ------------------------------------------------------------
@@ -87,15 +83,14 @@ CREATE TABLE flag (
 -- ------------------------------------------------------------
 CREATE TABLE prediction (
     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-    flag_id     UUID    NOT NULL REFERENCES flag(id) ON DELETE CASCADE,
+    flag_id     UUID    REFERENCES flag(id) ON DELETE CASCADE,
     model_id    UUID    NOT NULL REFERENCES model(id) ON DELETE RESTRICT,
-    confidence  FLOAT   NOT NULL CHECK (confidence BETWEEN 0.0 AND 1.0),
-    label       TEXT    NOT NULL
+    confidence  FLOAT[]   NOT NULL CHECK (confidence BETWEEN 0.0 AND 1.0),
+    label       TEXT[]    NOT NULL
 );
 
 -- ------------------------------------------------------------
 -- Moderation_decision
--- Human moderator's verdict on a flagged comment
 -- ------------------------------------------------------------
 CREATE TABLE moderation_decision (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -103,7 +98,7 @@ CREATE TABLE moderation_decision (
     moderator_id    UUID        NOT NULL REFERENCES moderator(id) ON DELETE RESTRICT,
     flag_id         UUID        NOT NULL REFERENCES flag(id) ON DELETE RESTRICT,
     prediction_id   UUID        REFERENCES prediction(id) ON DELETE SET NULL,
-    decision        BOOLEAN     NOT NULL,   -- true = remove, false = keep
+    decision        BOOLEAN     NOT NULL,  
     time_stamp      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -127,8 +122,14 @@ CREATE INDEX idx_moddec_flag        ON moderation_decision(flag_id);
 -- ------------------------------------------------------------
 -- views
 -- ------------------------------------------------------------
+
 CREATE VIEW unreviewed_flags AS
-SELECT f.id, f.comment_id, f.prediction_score, c.content
+SELECT f.id, f.comment_id, c.content
 FROM flag f
-JOIN comment c ON c.id = f.comment_id
-WHERE f.id NOT IN (SELECT flag_id FROM Moderation_decision)
+JOIN comment c 
+    ON c.id = f.comment_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM moderation_decision md
+    WHERE md.flag_id = f.id
+);

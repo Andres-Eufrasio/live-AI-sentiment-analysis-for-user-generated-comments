@@ -1,8 +1,9 @@
 import psycopg2
 import os
+from uuid import UUID
 
 
-class Database():
+class DatabaseCon():
     #Use docker variables
     def __init__(self):
         self.user = os.environ.get("POSTGRES_USER")
@@ -46,28 +47,35 @@ class DatabaseTools:
     def create_comment(
         self,
         content: str,
-        post_id: str,
-        author_id: str | None = None,
-        parent_comment_id: str | None = None,
+        post_id: UUID,
+        author_id: UUID | None = None,
+        parent_comment_id: UUID | None = None,
         context: str | None = None,
     ):
-        with self.conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO comment (
-                    content,
-                    author_id,
-                    post_id,
-                    parent_comment_id,
-                    context
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO comment (
+                        content,
+                        author_id,
+                        post_id,
+                        parent_comment_id,
+                        context
+                    )
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id, posted_time;
+                    """,
+                    (content, author_id, post_id, parent_comment_id, context),
                 )
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING id, posted_time;
-                """,
-                (content, author_id, post_id, parent_comment_id, context),
-            )
-            result = cur.fetchone()
-            self.conn.commit()
-            return result
+
+                result = cur.fetchone()
+                self.conn.commit()
+                return {"id": result[0], "posted_time": result[1]}
+
+        except Exception:
+            self.conn.rollback()
+            raise
+        
 
 

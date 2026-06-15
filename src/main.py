@@ -1,12 +1,24 @@
 """
 Created by Andres Eufrasio Tinajero 
 """
+import uvicorn
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from model import SentimentAnalysis
+from uuid import UUID
+from typing import Optional
+from database_tools import DatabaseTools, DatabaseCon
+
 
 app = FastAPI()
 
+"""Note pad
+Since things are a little messed up between my database and api I need to reslove them.
+To begin let's just go through one process and fix it.
+User commnet in
+precition
+to save prediction
+"""
 
 """
 Load model
@@ -23,26 +35,62 @@ class Main():
         return self.model.predict(text)
 system = Main() 
 
+"""
+Load database connection
+"""
+with DatabaseCon() as conn:
+    database = DatabaseTools(conn)
 
 """
 pydantic shema
 """
-class Prediction(BaseModel):
-    result: float
+class CommentIn(BaseModel):
+    content: str
+    author_id: UUID 
+    post_id: UUID
+    parent_comment_id: Optional[UUID] = None
+    context: Optional[str] = None
+
+class UserReportIn(BaseModel):
+    user_id: UUID 
+    comment_id: UUID
+    reason: str
+    category: str
+
+class FlagIn(BaseModel):
+    comment_id: UUID
+    user_report_id: Optional[UUID] = None
+    prediction_score: Optional[float] = None  
+
+class PredictionIn(BaseModel):
+    flag_id: UUID
+    model_id: UUID
+    confidence: float 
     label: str
 
-class Comment(BaseModel):
-    comment: str
+class ModerationDecisionIn(BaseModel):
+    comment_id: UUID
+    moderator_id: UUID
+    flag_id: UUID
+    prediction_id: Optional[UUID] = None
+    decision: bool      
     
 #temp datastructure that will act as database until it is created
-database = []
 queue = []
 
 
-# Fast API Background task
-def process_comment(comment: Comment):
-    result = system.predict(comment.comment)
-    print(result)  # Replace with DB write
+"""My background tasks"""
+def process_comment(comment: CommentIn):
+    result = system.predict(comment.content)
+    database.create_comment(
+    comment.content,
+    comment.post_id,
+    comment.author_id,
+    comment.parent_comment_id,
+    comment.context,
+    )
+    # add prediction
+
 
 # API endpoints
 @app.get("/")
@@ -50,11 +98,11 @@ def root():
     return {"Connection": "Established"}
 
 @app.post("/user_comments", status_code=201)
-def post_comment(comment: Comment, background_tasks: BackgroundTasks):
-    if comment.comment == "":
+def post_comment(comment: CommentIn, background_tasks: BackgroundTasks):
+    if comment.content == "":
         # bad request
         raise HTTPException(status_code=400, detail="Comment cannot be empty")
-    if len(comment.comment) > 2000:
+    if len(comment.content) > 2000:
         # bad request
         raise HTTPException(status_code=400, detail="Comment cannot be longer than 2000 characters")
     background_tasks.add_task(process_comment, comment)
@@ -69,7 +117,7 @@ def get_next_comment():
 
 
 @app.post("/predictions", status_code=201)
-def receive_prediction(prediction: Prediction):
+def receive_prediction(prediction: PredictionIn):
     database.append(prediction)
     return {"status": "saved"}
 
@@ -77,10 +125,6 @@ def receive_prediction(prediction: Prediction):
 @app.get("/predictions")
 def get_predictions():
     return {"predictions": database}
-
-
-
-
 
 
 if __name__ == "__main__":

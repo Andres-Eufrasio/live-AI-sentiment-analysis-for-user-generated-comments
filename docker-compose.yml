@@ -1,4 +1,4 @@
-# update to local for deployment maybe
+# Version for local deployment not for prod. exposed endpoints
 networks:
   my-local-network:
     external: true
@@ -36,6 +36,24 @@ services:
       - "8000:8000"
     networks:
       - my-local-network
+
+  frontend:
+    build: ./app
+    restart: unless-stopped
+    depends_on: 
+      - app
+    ports:
+      - "5173:5173"
+    volumes:
+    - ./app:/app
+    - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    networks:
+      - my-local-network
+
+
+
 
 
 volumes:
