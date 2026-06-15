@@ -1,5 +1,6 @@
 """
-Created by Andres 02 may 2026
+Created by Andres Eufrasio Tinajero 
+may 2nd 2026
 
 To do: pick one specific model for it to load
 allow for local models
@@ -25,6 +26,7 @@ class HFSentimentAnalysis():
     def __init__(self):
 
         self.name = "unitary/toxic-bert"
+        self.path = "./models/"
         try:   
             self.tokenizer = AutoTokenizer.from_pretrained(self.name)
             self.model = AutoModelForSequenceClassification.from_pretrained(self.name)
@@ -66,10 +68,29 @@ class HFSentimentAnalysis():
             return json_prediction
         else:
             return prediction
+        
+    def downlaod(self):
+        self.model.download()
             
-
+"""
 class PredictionSystem():
-    app = FastAPI()
+    pass
+app = FastAPI()
+model = False
+@app.get("/")
+def load_model():
+    model = HFSentimentAnalysis()
+    if model != False:
+        return {"Status": "is now running"}
+    else:
+        return {"Status: model failed to run"}  
+
+@app.get("/predict")
+def Predict_model(text : str):
+    prediction = model.predict(text)
+    return {"Model": "{prediction}"}
+    
+
         
 
 class LocalSentimentAnalysis():
@@ -78,11 +99,12 @@ class LocalSentimentAnalysis():
 
 class comment():
     pass
-
+"""
 
 if __name__ == "__main__":
     start = HFSentimentAnalysis()
     start.predict("text")
+    start.download
 
 
 
