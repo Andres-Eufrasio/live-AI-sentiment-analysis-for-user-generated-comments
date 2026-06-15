@@ -49,24 +49,33 @@ def process_comment(comment: Comment):
 # API endpoints
 @app.get("/")
 def root():
-    return {"Hello": "World"}
+    return {"Connection": "Establised"}
 
 @app.post("/user_comments", status_code=201)
 def post_comment(comment: Comment, background_tasks: BackgroundTasks):
+    if comment.comment == "":
+        # bad request
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+    if len(comment.comment) > 2000:
+        # bad request
+        raise HTTPException(status_code=400, detail="Comment cannot be longer than 2000 characters")
     background_tasks.add_task(process_comment, comment)
     return {"status": "queued"}
 
-@app.get("/user_comments")
+@app.get("/user_comments",status_code=200)
 def get_next_comment():
     if not queue:
         raise HTTPException(status_code=404, detail="Queue is empty")
-    return {"comment": queue.pop()}
+    return {"status": "queue is not empty"}
+
+
 
 @app.post("/predictions", status_code=201)
 def receive_prediction(prediction: Prediction):
     database.append(prediction)
     return {"status": "saved"}
 
+# finish this bit
 @app.get("/predictions")
 def get_predictions():
     return {"predictions": database}
