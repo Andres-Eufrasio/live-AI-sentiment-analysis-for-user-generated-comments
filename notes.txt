@@ -1,5 +1,0 @@
-notes:
-Convert to json
-
-need to convert the predictions to a list
-then 

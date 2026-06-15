@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 import uvicorn
 from pydantic import BaseModel
+from Model import SentimentAnalysis
 
 """
 Created by Andres Eufrasio Tinajero 
@@ -14,6 +15,21 @@ validation
 input output for online model
 
 """
+model = 0
+class Main():
+    def __init__(self):
+        self.load_model()
+
+    def load_model(self):
+        self.model=SentimentAnalysis()
+        print("Model loaded")
+
+    def predict(self,text : str):
+        return self.model.predict(text)
+system = Main() 
+    
+
+
 
 app = FastAPI()
 
@@ -22,14 +38,19 @@ class Prediction(BaseModel):
     label: str
 
 class Comment(BaseModel):
-    Username: str
-    Comment: str
-    Time: str
+    comment: str
     
+@app.post("/new_comment")
+def new_comment(comment: Comment):
+    return system.predict(comment.comment)
+
 
 #temp datastructure that will act as database until it is created
 database = []
 queue = []
+
+
+
 
 
 @app.get("/")
@@ -52,12 +73,11 @@ def get_comment(comment: Comment):
 @app.get("/user_comments")
 def get_comment():
     temp = queue.pop()
-    PredComments
     return {"Comment" : f"queue.pop"}
 
 @app.get("/all_comments")
-def get_all_comments:
-    return {}
+def get_all_comments():
+    pass
 
 
 
@@ -65,3 +85,7 @@ def get_all_comments:
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    while True:
+        while queue:
+            queue.pop()
