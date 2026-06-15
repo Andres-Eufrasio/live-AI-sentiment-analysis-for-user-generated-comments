@@ -50,7 +50,7 @@ CREATE TABLE post (
 CREATE TABLE comment (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     content             TEXT        NOT NULL,
-    author_id           UUID        NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    author_id           UUID        REFERENCES "user"(id) ON DELETE CASCADE,
     post_id             UUID        NOT NULL REFERENCES post(id) ON DELETE CASCADE,
     parent_comment_id   UUID        REFERENCES comment(id) ON DELETE SET NULL,
     context             TEXT,

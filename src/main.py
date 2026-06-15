@@ -1,21 +1,16 @@
+"""
+Created by Andres Eufrasio Tinajero 
+"""
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from model import SentimentAnalysis
 
-"""
-Created by Andres Eufrasio Tinajero 
-May 1st 2026
-
-Todo:
-input output for the model
-input output from the database
-input output from the website
-validation
-input output for online model
-"""
-
-    
 app = FastAPI()
+
+
+"""
+Load model
+"""
 class Main():
     def __init__(self):
         self.load_model()
@@ -28,6 +23,10 @@ class Main():
         return self.model.predict(text)
 system = Main() 
 
+
+"""
+pydantic shema
+"""
 class Prediction(BaseModel):
     result: float
     label: str
