@@ -1,7 +1,6 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-import uvicorn
 from pydantic import BaseModel
-from Model import SentimentAnalysis
+from model import SentimentAnalysis
 
 """
 Created by Andres Eufrasio Tinajero 
@@ -13,8 +12,10 @@ input output from the database
 input output from the website
 validation
 input output for online model
-
 """
+
+    
+app = FastAPI()
 class Main():
     def __init__(self):
         self.load_model()
@@ -26,8 +27,6 @@ class Main():
     def predict(self,text : str):
         return self.model.predict(text)
 system = Main() 
-    
-app = FastAPI()
 
 class Prediction(BaseModel):
     result: float
@@ -49,7 +48,7 @@ def process_comment(comment: Comment):
 # API endpoints
 @app.get("/")
 def root():
-    return {"Connection": "Establised"}
+    return {"Connection": "Established"}
 
 @app.post("/user_comments", status_code=201)
 def post_comment(comment: Comment, background_tasks: BackgroundTasks):
