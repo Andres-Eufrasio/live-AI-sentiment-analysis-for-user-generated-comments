@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- User
 -- ------------------------------------------------------------
 CREATE TABLE "user" (
-    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    id          TEXT        PRIMARY KEY,
     username    TEXT        NOT NULL UNIQUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     banned      BOOLEAN     NOT NULL DEFAULT false
@@ -30,7 +30,7 @@ CREATE TABLE model (
     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT    NOT NULL,
     label       TEXT    NOT NULL,
-    confidence  INT     NOT NULL CHECK (confidence BETWEEN 0 AND 100)
+    confidence  INT     NOT NULL
 );
 
 -- ------------------------------------------------------------
@@ -39,8 +39,7 @@ CREATE TABLE model (
 CREATE TABLE post (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     content     TEXT        NOT NULL,
-    author_id   UUID        NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-    context     TEXT,
+    author_id   TEXT        NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
     posted_time TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -50,10 +49,9 @@ CREATE TABLE post (
 CREATE TABLE comment (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     content             TEXT        NOT NULL,
-    author_id           UUID        REFERENCES "user"(id) ON DELETE CASCADE,
-    post_id             UUID        NOT NULL REFERENCES post(id) ON DELETE CASCADE,
+    author_id           TEXT        REFERENCES "user"(id) ON DELETE CASCADE,
+    post_id             UUID        REFERENCES post(id) ON DELETE CASCADE,
     parent_comment_id   UUID        REFERENCES comment(id) ON DELETE SET NULL,
-    context             TEXT,
     posted_time         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -75,7 +73,7 @@ CREATE TABLE user_report (
 CREATE TABLE flag (
     id                  UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     comment_id          UUID    NOT NULL REFERENCES comment(id) ON DELETE CASCADE,
-    user_report_id      UUID    REFERENCES user_report(id) ON DELETE SET NULL,
+    user_report_id      UUID    REFERENCES user_report(id) ON DELETE SET NULL
 );
 
 -- ------------------------------------------------------------
@@ -85,7 +83,7 @@ CREATE TABLE prediction (
     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     flag_id     UUID    REFERENCES flag(id) ON DELETE CASCADE,
     model_id    UUID    NOT NULL REFERENCES model(id) ON DELETE RESTRICT,
-    confidence  FLOAT[]   NOT NULL CHECK (confidence BETWEEN 0.0 AND 1.0),
+    confidence  FLOAT[]   NOT NULL,
     label       TEXT[]    NOT NULL
 );
 
@@ -133,3 +131,20 @@ WHERE NOT EXISTS (
     FROM moderation_decision md
     WHERE md.flag_id = f.id
 );
+
+
+-- ------------------------------------------------------------
+-- Test values
+-- ------------------------------------------------------------
+INSERT INTO "user" (id, username, created_at, banned)
+VALUES
+    ('user1', 'test',   now(), false),
+    (gen_random_uuid(), 'alice',   now(), false),
+    (gen_random_uuid(), 'bob',     now(), false),
+    (gen_random_uuid(), 'charlie', now(), false),
+    (gen_random_uuid(), 'diana',    now(), false),
+    (gen_random_uuid(), 'eve',     now(), true);
+
+INSERT INTO post(id, content, author_id)
+VALUES
+    ('16c05c49-419b-48b8-9813-b573d7f6cb99', 'This is a post', 'user1')

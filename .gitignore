@@ -4,3 +4,4 @@ __pycache__
 .HIDDEN
 .env
 .dockerignore
+testQueries

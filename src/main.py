@@ -8,6 +8,7 @@ from model import SentimentAnalysis
 from uuid import UUID
 from typing import Optional
 from database_tools import DatabaseTools, DatabaseCon
+from datetime import datetime
 
 
 app = FastAPI()
@@ -38,6 +39,17 @@ system = Main()
 """
 Load database connection
 """
+"""
+def get_db():
+    conn = DatabaseCon.get_conn()
+    try:
+        yield DatabaseTools(conn)
+    finally:
+        DatabaseCon.put_conn(conn)
+
+"""
+
+
 with DatabaseCon() as conn:
     database = DatabaseTools(conn)
 
@@ -46,10 +58,21 @@ pydantic shema
 """
 class CommentIn(BaseModel):
     content: str
-    author_id: UUID 
-    post_id: UUID
+    author_id: Optional[UUID] = None
+    post_id: Optional[UUID] = None
     parent_comment_id: Optional[UUID] = None
-    context: Optional[str] = None
+
+class UserIn(BaseModel):
+    id: str
+    username: str
+    created_at: Optional[datetime] = None
+    banned: Optional[bool] = False
+
+class PostIn(BaseModel):
+    content: str
+    user_id: str
+    id: Optional[UUID] = None
+    posted_time: Optional[datetime] = None
 
 class UserReportIn(BaseModel):
     user_id: UUID 
@@ -82,20 +105,62 @@ queue = []
 """My background tasks"""
 def process_comment(comment: CommentIn):
     result = system.predict(comment.content)
-    database.create_comment(
-    comment.content,
-    comment.post_id,
-    comment.author_id,
-    comment.parent_comment_id,
-    comment.context,
-    )
-    # add prediction
+    print(result)
+    conn = DatabaseCon.get_conn()
+    try:
+        db = DatabaseTools(conn)
+        db.create_comment(
+        comment.content,
+        comment.post_id,
+        comment.author_id,
+        comment.parent_comment_id,
+        )
+    finally:
+        DatabaseCon.put_conn(conn)
 
 
 # API endpoints
 @app.get("/")
 def root():
     return {"Connection": "Established"}
+
+@app.post("/create_user", status_code=201)
+def create_user(user: UserIn):
+    conn = DatabaseCon.get_conn()
+    try:
+        db = DatabaseTools(conn)
+        user_id = db.create_user(
+        user.id,
+        user.username,
+        user.created_at,
+        user.banned
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"User was not created: {str(e)}")
+    finally:
+        DatabaseCon.put_conn(conn)
+    return {"id": f"{user_id}"}
+        
+"""
+Implement !!!!!!!!
+"""
+@app.post("/create_post", status_code=201)
+def create_post(post: {PostIn}):
+    conn = DatabaseCon.get_conn()
+    try:
+        db = DatabaseTools(conn)
+        post_id = db.create_user(
+        post.id,
+        post.content,
+        post.author_id,
+        post.posted_time
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Post was not created: {str(e)}")
+    finally:
+        DatabaseCon.put_conn(conn)
+    return {"post_id": f"{post_id}"}
+
 
 @app.post("/user_comments", status_code=201)
 def post_comment(comment: CommentIn, background_tasks: BackgroundTasks):
@@ -114,12 +179,6 @@ def get_next_comment():
         raise HTTPException(status_code=404, detail="Queue is empty")
     return {"status": "queue is not empty"}
 
-
-
-@app.post("/predictions", status_code=201)
-def receive_prediction(prediction: PredictionIn):
-    database.append(prediction)
-    return {"status": "saved"}
 
 # finish this bit
 @app.get("/predictions")
