@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 import uvicorn
 from pydantic import BaseModel
 from Model import SentimentAnalysis
@@ -15,7 +15,6 @@ validation
 input output for online model
 
 """
-model = 0
 class Main():
     def __init__(self):
         self.load_model()
@@ -28,9 +27,6 @@ class Main():
         return self.model.predict(text)
 system = Main() 
     
-
-
-
 app = FastAPI()
 
 class Prediction(BaseModel):
@@ -40,44 +36,41 @@ class Prediction(BaseModel):
 class Comment(BaseModel):
     comment: str
     
-@app.post("/new_comment")
-def new_comment(comment: Comment):
-    return system.predict(comment.comment)
-
-
 #temp datastructure that will act as database until it is created
 database = []
 queue = []
 
 
+# Fast API Background task
+def process_comment(comment: Comment):
+    result = system.predict(comment.comment)
+    print(result)  # Replace with DB write
 
-
-
+# API endpoints
 @app.get("/")
 def root():
     return {"Hello": "World"}
 
-@app.post("/predictions")
-def recive_prediction(prediction: Prediction):
-    #need to check prediction socre and then hold it depending 
-    database.append(prediction)
-
-@app.get("/predictions")
-def get_prediction():
-    return {"Prediction": f"{database}"}
-
-@app.post("/user_comments")
-def get_comment(comment: Comment):
-    queue.append(Comment)
+@app.post("/user_comments", status_code=201)
+def post_comment(comment: Comment, background_tasks: BackgroundTasks):
+    background_tasks.add_task(process_comment, comment)
+    return {"status": "queued"}
 
 @app.get("/user_comments")
-def get_comment():
-    temp = queue.pop()
-    return {"Comment" : f"queue.pop"}
+def get_next_comment():
+    if not queue:
+        raise HTTPException(status_code=404, detail="Queue is empty")
+    return {"comment": queue.pop()}
 
-@app.get("/all_comments")
-def get_all_comments():
-    pass
+@app.post("/predictions", status_code=201)
+def receive_prediction(prediction: Prediction):
+    database.append(prediction)
+    return {"status": "saved"}
+
+@app.get("/predictions")
+def get_predictions():
+    return {"predictions": database}
+
 
 
 
@@ -85,7 +78,3 @@ def get_all_comments():
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-    while True:
-        while queue:
-            queue.pop()
