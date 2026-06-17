@@ -72,7 +72,8 @@ CREATE TABLE user_report (
 CREATE TABLE flag (
     id                  UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     comment_id          UUID    NOT NULL REFERENCES comment(id) ON DELETE CASCADE,
-    user_report_id      UUID    REFERENCES user_report(id) ON DELETE SET NULL
+    user_report_id      UUID    REFERENCES user_report(id) ON DELETE SET NULL,
+    active              BOOLEAN NOT NULL
 );
 
 -- ------------------------------------------------------------
@@ -82,8 +83,7 @@ CREATE TABLE prediction (
     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     flag_id     UUID    REFERENCES flag(id) ON DELETE CASCADE,
     model_id    TEXT    NOT NULL REFERENCES model(name) ON DELETE RESTRICT,
-    confidence  FLOAT[]   NOT NULL,
-    label       TEXT[]    NOT NULL
+    confidence  FLOAT[]   NOT NULL
 );
 
 -- ------------------------------------------------------------
@@ -148,6 +148,10 @@ VALUES
     (gen_random_uuid(), 'diana',    now(), false),
     (gen_random_uuid(), 'eve',     now(), true);
 
-INSERT INTO post(id, content, author_id)
+INSERT INTO post (id, content, author_id)
 VALUES
-    ('16c05c49-419b-48b8-9813-b573d7f6cb99', 'This is a post', 'user1')
+    ('16c05c49-419b-48b8-9813-b573d7f6cb99', 'This is a post', 'user1');
+
+INSERT INTO model (name, labels)
+VALUES
+    ('unitary/toxic-bert', ARRAY['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']);

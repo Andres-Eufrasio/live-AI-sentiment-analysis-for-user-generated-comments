@@ -24,7 +24,6 @@ to save prediction
 """
 Load model
 """
-
 class Main():
     def __init__(self):
         self.load_model()
@@ -33,10 +32,10 @@ class Main():
     def load_model(self):
         try:
             self.model=SentimentAnalysis()
-            name, labels = self.get_info()
+            self.name, self.labels = self.get_info()
             #flush info to ensure it gets printed
             print("Model loaded")
-            print(f"Model name: {name} \n Labels: {labels}", flush=True)
+            print(f"Model name: {self.name} \nLabels: {self.labels}", flush=True)
         except Exception as e:
             raise RuntimeError(f"Model failed to load: {e}")
 
@@ -100,9 +99,8 @@ class ModerationDecisionIn(BaseModel):
     flag_id: UUID
     prediction_id: Optional[UUID] = None
     decision: bool      
-    
 
-queue = []
+
 
 
 """My background tasks"""
@@ -112,20 +110,36 @@ def process_comment(comment: CommentIn):
     conn = DatabaseCon.get_conn()
     try:
         db = DatabaseTools(conn)
-        db.create_comment(
+        comment_id = db.create_comment(
         comment.content,
         comment.post_id,
         comment.author_id,
-        comment.parent_comment_id,
-        )
+        comment.parent_comment_id
+        )["id"]
+
+        #add custom flag stuff here or make a function for it at least
+        flag_id = db.create_flag(
+            comment_id=comment_id,
+            active = False
+        )["id"]
+
+        db.create_prediction(
+            model_id=system.name,
+            confidence= result,
+            flag_id= flag_id
+            )
+    except Exception as e:
+        raise RuntimeError(f"failure to process new commnet: {e}")
     finally:
         DatabaseCon.put_conn(conn)
-
+        
 
 # API endpoints
 @app.get("/")
 def root():
-    return {"Connection": "Established"}
+    return {"Connection": "Healthy",
+            "info" : "Please use /docs to see automatic documentation for API"
+            }
 
 @app.post("/create_user", status_code=201)
 def create_user(user: UserIn):
@@ -173,17 +187,13 @@ def post_comment(comment: CommentIn, background_tasks: BackgroundTasks):
     background_tasks.add_task(process_comment, comment)
     return {"status": "queued"}
 
-@app.get("/user_comments",status_code=200)
-def get_next_comment():
-    if not queue:
-        raise HTTPException(status_code=404, detail="Queue is empty")
-    return {"status": "queue is not empty"}
-
-
+"""
 # finish this bit
 @app.get("/predictions")
 def get_predictions():
     return {"predictions": database}
+"""
+
 
 
 if __name__ == "__main__":

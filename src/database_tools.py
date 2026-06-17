@@ -77,6 +77,7 @@ class DatabaseTools:
             return ""
         else:
             return result[0]
+    
 
     """
     Inserts
@@ -99,14 +100,14 @@ class DatabaseTools:
                         parent_comment_id
                     )
                     VALUES (%s, %s, %s, %s)
-                    RETURNING id, posted_time;
+                    RETURNING id;
                     """,
                     (content, author_id, post_id, parent_comment_id),
                 )
 
                 result = cur.fetchone()
                 self.conn.commit()
-                return {"id": result[0], "posted_time": result[1]}
+                return {"id": result[0]}
 
         except Exception:
             self.conn.rollback()
@@ -216,6 +217,93 @@ class DatabaseTools:
         except Exception:
             self.conn.rollback()
             raise  
+
+    def create_flag(
+        self,
+        comment_id: list[str],
+        user_report_id: UUID | None = None
+    ):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO flag (
+                        comment_id,
+                        user_report_id,
+                    )
+                    VALUES (%s, %s)
+                    RETURNING id;
+                    """,
+                    (comment_id, user_report_id),
+                )
+                result = cur.fetchone()
+                self.conn.commit()
+                return {"id": result[0]}
+            
+        except Exception:
+            self.conn.rollback()
+            raise  
+
+    def create_prediction(
+        self,
+        model_id: str,
+        confidence: list[float],
+        flag_id : UUID | None = None,
+    ):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO model (
+                        flag_id,
+                        model_id,
+                        confidence,
+                    )
+                    VALUES (%s, %s, %s)
+                    RETURNING name;
+                    """,
+                    (flag_id, model_id, confidence),
+                )
+                result = cur.fetchone()
+                self.conn.commit()
+                return {"name": result[0]}
+            
+        except Exception:
+            self.conn.rollback()
+            raise  
+
+
+    def create_moderation_decision(
+        self,
+        comment_id: UUID,
+        moderator_id: UUID,
+        flag_id: UUID,
+        decision: bool,
+        prediction_id: UUID | None = None,
+    ):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO moderation_decision (
+                        comment_id,
+                        moderator_id,
+                        flag_id,
+                        prediction_id,
+                        decision
+                    )
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id;
+                    """,
+                    (comment_id, moderator_id, flag_id, prediction_id, decision),
+                )
+                result = cur.fetchone()
+                self.conn.commit()
+                return {"id": result[0]}
+
+        except Exception:
+            self.conn.rollback()
+            raise
 
 
         
