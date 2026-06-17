@@ -1,25 +1,12 @@
 """
 Created by Andres Eufrasio Tinajero 
-may 2nd 2026
-
-To do: pick one specific model for it to load
-allow for local models
-interaction with the api
-continous loop for interaction
 """
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import os
 import torch
 
-"""
-A sentiement analysis predictor that loads a huging face model
-Precondition:
-Comment text
 
-Postcondition:
-json with labels and probability
-"""
 class SentimentAnalysis():
 
     def __init__(self, model = "", path = ""):
@@ -50,10 +37,18 @@ class SentimentAnalysis():
 
     def get_name(self):
         return self.name
+    
+    def get_labels(self) -> dict:  
+        return self.labels
 
     def shutdown_model(self):
-        del self.model
-        torch.cuda.empty_cache()
+        try:
+            del self.model
+            torch.cuda.empty_cache()
+            return True
+        except Exception as e:
+            raise RuntimeError(f"Model failed to shutdown: {e}")
+        
 
     def convert_to_json(self, prediction):
         # [0] included because when tesnor is converted into a list it becomes a 2dArray with the contents in the first position.
@@ -83,7 +78,8 @@ class SentimentAnalysis():
 
 if __name__ == "__main__":
     start = SentimentAnalysis()
-    start.predict("text")
+    print(start.predict("text"))
+    print(start.labels)
     
 
 

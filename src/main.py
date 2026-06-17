@@ -10,7 +10,7 @@ from typing import Optional
 from database_tools import DatabaseTools, DatabaseCon
 from datetime import datetime
 
-
+print("start")
 app = FastAPI()
 
 """Note pad
@@ -24,30 +24,33 @@ to save prediction
 """
 Load model
 """
+
 class Main():
     def __init__(self):
         self.load_model()
+        
 
     def load_model(self):
-        self.model=SentimentAnalysis()
-        print("Model loaded")
+        try:
+            self.model=SentimentAnalysis()
+            name, labels = self.get_info()
+            #flush info to ensure it gets printed
+            print("Model loaded")
+            print(f"Model name: {name} \n Labels: {labels}", flush=True)
+        except Exception as e:
+            raise RuntimeError(f"Model failed to load: {e}")
 
     def predict(self,text : str):
         return self.model.predict(text)
+    
+    #Return a tuple containing name and model labels[]
+    def get_info(self):
+        model_name = self.model.get_name()
+        #convert to list from dict
+        model_labels = list(self.model.get_labels().values())
+        return model_name, model_labels
 system = Main() 
 
-"""
-Load database connection
-"""
-"""
-def get_db():
-    conn = DatabaseCon.get_conn()
-    try:
-        yield DatabaseTools(conn)
-    finally:
-        DatabaseCon.put_conn(conn)
-
-"""
 
 
 with DatabaseCon() as conn:
@@ -87,7 +90,7 @@ class FlagIn(BaseModel):
 
 class PredictionIn(BaseModel):
     flag_id: UUID
-    model_id: UUID
+    model_name: str
     confidence: float 
     label: str
 
@@ -98,7 +101,7 @@ class ModerationDecisionIn(BaseModel):
     prediction_id: Optional[UUID] = None
     decision: bool      
     
-#temp datastructure that will act as database until it is created
+
 queue = []
 
 
@@ -141,11 +144,8 @@ def create_user(user: UserIn):
         DatabaseCon.put_conn(conn)
     return {"id": f"{user_id}"}
         
-"""
-Implement !!!!!!!!
-"""
 @app.post("/create_post", status_code=201)
-def create_post(post: {PostIn}):
+def create_post(post: PostIn):
     conn = DatabaseCon.get_conn()
     try:
         db = DatabaseTools(conn)

@@ -7,11 +7,15 @@ from uuid import UUID
 
 psycopg2.extras.register_uuid()
 
+"""
+Pooled database connection
+"""
 class DatabaseCon:
     _pool = None
 
     @classmethod
     def init_pool(cls):
+        #Uses docker enviroment info
         user = os.environ.get("POSTGRES_USER")
         password = os.environ.get("POSTGRES_PASSWORD")
         database = os.environ.get("POSTGRES_DB")
@@ -56,12 +60,27 @@ class DatabaseCon:
 class DatabaseTools:
     def __init__(self, conn):
         self.conn = conn
-
+    """
+    Gets
+    """
     def get_unreviewed_flags(self):
         with self.conn.cursor() as cur:
             cur.execute("SELECT * FROM unreviewed_flags;")
             return cur.fetchall()
 
+    def get_active_model(self):
+        with self.conn.cursor() as cur:
+            #Returns either 1 or 0 indexes
+            cur.execute("SELECT name FROM model WHERE active = TRUE;")
+            result = cur.fetchall()
+        if result is None:
+            return ""
+        else:
+            return result[0]
+
+    """
+    Inserts
+    """
     def create_comment(
         self,
         content: str,
@@ -169,4 +188,39 @@ class DatabaseTools:
         except Exception:
             self.conn.rollback()
             raise
+
+    def create_model(
+        self,
+        name: str,
+        labels: list[str],
+        active: bool | None = False
+    ):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO model (
+                        name,
+                        labels,
+                        active,
+                    )
+                    VALUES (%s, %s, %s)
+                    RETURNING name;
+                    """,
+                    (name, labels, active),
+                )
+                result = cur.fetchone()
+                self.conn.commit()
+                return {"name": result[0]}
+            
+        except Exception:
+            self.conn.rollback()
+            raise  
+
+
+        
+    
+        
+
+
 

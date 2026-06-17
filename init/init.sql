@@ -27,10 +27,9 @@ CREATE TABLE moderator (
 -- Model
 -- ------------------------------------------------------------
 CREATE TABLE model (
-    id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        TEXT    NOT NULL,
-    label       TEXT    NOT NULL,
-    confidence  INT     NOT NULL
+    name        TEXT    PRIMARY KEY,
+    labels       TEXT[]    NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- ------------------------------------------------------------
@@ -60,7 +59,7 @@ CREATE TABLE comment (
 -- ------------------------------------------------------------
 CREATE TABLE user_report (
     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID    NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    user_id     TEXT    NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
     comment_id  UUID    NOT NULL REFERENCES comment(id) ON DELETE CASCADE,
     reason      TEXT    NOT NULL,
     category    TEXT    NOT NULL,
@@ -82,7 +81,7 @@ CREATE TABLE flag (
 CREATE TABLE prediction (
     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     flag_id     UUID    REFERENCES flag(id) ON DELETE CASCADE,
-    model_id    UUID    NOT NULL REFERENCES model(id) ON DELETE RESTRICT,
+    model_id    TEXT    NOT NULL REFERENCES model(name) ON DELETE RESTRICT,
     confidence  FLOAT[]   NOT NULL,
     label       TEXT[]    NOT NULL
 );
@@ -116,6 +115,10 @@ CREATE INDEX idx_prediction_model   ON prediction(model_id);
 CREATE INDEX idx_moddec_comment     ON moderation_decision(comment_id);
 CREATE INDEX idx_moddec_moderator   ON moderation_decision(moderator_id);
 CREATE INDEX idx_moddec_flag        ON moderation_decision(flag_id);
+
+CREATE UNIQUE INDEX active_model
+    ON model (active)
+    WHERE active = TRUE;
 
 -- ------------------------------------------------------------
 -- views
