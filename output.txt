@@ -1,0 +1,277 @@
+ Container project-test-run-b30cfe623901 Creating 
+ Container project-test-run-b30cfe623901 Created 
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.1.0, pluggy-1.6.0 -- /usr/local/bin/python3.12
+cachedir: .pytest_cache
+rootdir: /src
+plugins: anyio-4.13.0
+collecting ... collected 16 items
+
+api_tests.py::TestRoot::test_status_200 PASSED                           [  6%]
+api_tests.py::TestRoot::test_body_has_connection_key PASSED              [ 12%]
+api_tests.py::TestRoot::test_body_connection_healthy PASSED              [ 18%]
+api_tests.py::TestRoot::test_body_has_info_key PASSED                    [ 25%]
+api_tests.py::TestCreateUser::test_status_201 FAILED                     [ 31%]
+api_tests.py::TestCreateUser::test_returns_id FAILED                     [ 37%]
+api_tests.py::TestCreateUser::test_optional_fields_omitted PASSED        [ 43%]
+api_tests.py::TestCreateUser::test_missing_required_username_422 PASSED  [ 50%]
+api_tests.py::TestCreateUser::test_missing_required_id_422 PASSED        [ 56%]
+api_tests.py::TestCreateUser::test_db_error_returns_400 FAILED           [ 62%]
+api_tests.py::TestCreatePost::test_status_201 FAILED                     [ 68%]
+api_tests.py::TestCreatePost::test_returns_post_id FAILED                [ 75%]
+api_tests.py::TestCreatePost::test_optional_id_and_time_omitted FAILED   [ 81%]
+api_tests.py::TestCreatePost::test_missing_content_422 PASSED            [ 87%]
+api_tests.py::TestCreatePost::test_missing_user_id_422 PASSED            [ 93%]
+api_tests.py::TestCreatePost::test_db_error_returns_400 PASSED           [100%]
+
+=================================== FAILURES ===================================
+________________________ TestCreateUser.test_status_201 ________________________
+
+self = <api_tests.TestCreateUser object at 0x7d526eb915e0>
+
+    def test_status_201(self):
+        mock_db.create_user.return_value = VALID_USER["id"]
+>       response = client.post("/create_user", json=VALID_USER)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+api_tests.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/local/lib/python3.12/site-packages/starlette/testclient.py:555: in post
+    return super().post(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1144: in post
+    return self.request(
+/usr/local/lib/python3.12/site-packages/starlette/testclient.py:454: in request
+    return super().request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:812: in request
+    request = self.build_request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:378: in build_request
+    return Request(
+/usr/local/lib/python3.12/site-packages/httpx/_models.py:408: in __init__
+    headers, stream = encode_request(
+/usr/local/lib/python3.12/site-packages/httpx/_content.py:216: in encode_request
+    return encode_json(json)
+           ^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_content.py:177: in encode_json
+    body = json_dumps(
+/usr/local/lib/python3.12/json/__init__.py:238: in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+/usr/local/lib/python3.12/json/encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/json/encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+           ^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.encoder.JSONEncoder object at 0x7d526eb93b60>
+o = <class 'datetime.datetime'>
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+>       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type type is not JSON serializable
+
+/usr/local/lib/python3.12/json/encoder.py:180: TypeError
+________________________ TestCreateUser.test_returns_id ________________________
+
+self = <api_tests.TestCreateUser object at 0x7d526eb91100>
+
+    def test_returns_id(self):
+        mock_db.create_user.return_value = VALID_USER["id"]
+>       response = client.post("/create_user", json=VALID_USER)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+api_tests.py:97: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/local/lib/python3.12/site-packages/starlette/testclient.py:555: in post
+    return super().post(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1144: in post
+    return self.request(
+/usr/local/lib/python3.12/site-packages/starlette/testclient.py:454: in request
+    return super().request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:812: in request
+    request = self.build_request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:378: in build_request
+    return Request(
+/usr/local/lib/python3.12/site-packages/httpx/_models.py:408: in __init__
+    headers, stream = encode_request(
+/usr/local/lib/python3.12/site-packages/httpx/_content.py:216: in encode_request
+    return encode_json(json)
+           ^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_content.py:177: in encode_json
+    body = json_dumps(
+/usr/local/lib/python3.12/json/__init__.py:238: in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+/usr/local/lib/python3.12/json/encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/json/encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+           ^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.encoder.JSONEncoder object at 0x7d526eb93f20>
+o = <class 'datetime.datetime'>
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+>       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type type is not JSON serializable
+
+/usr/local/lib/python3.12/json/encoder.py:180: TypeError
+___________________ TestCreateUser.test_db_error_returns_400 ___________________
+
+self = <api_tests.TestCreateUser object at 0x7d526eb92090>
+
+    def test_db_error_returns_400(self):
+        mock_db.create_user.side_effect = Exception("DB constraint violation")
+>       response = client.post("/create_user", json=VALID_USER)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+api_tests.py:115: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/local/lib/python3.12/site-packages/starlette/testclient.py:555: in post
+    return super().post(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1144: in post
+    return self.request(
+/usr/local/lib/python3.12/site-packages/starlette/testclient.py:454: in request
+    return super().request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:812: in request
+    request = self.build_request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:378: in build_request
+    return Request(
+/usr/local/lib/python3.12/site-packages/httpx/_models.py:408: in __init__
+    headers, stream = encode_request(
+/usr/local/lib/python3.12/site-packages/httpx/_content.py:216: in encode_request
+    return encode_json(json)
+           ^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_content.py:177: in encode_json
+    body = json_dumps(
+/usr/local/lib/python3.12/json/__init__.py:238: in dumps
+    **kw).encode(obj)
+          ^^^^^^^^^^^
+/usr/local/lib/python3.12/json/encoder.py:200: in encode
+    chunks = self.iterencode(o, _one_shot=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/json/encoder.py:258: in iterencode
+    return _iterencode(o, 0)
+           ^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.encoder.JSONEncoder object at 0x7d526ebcaf60>
+o = <class 'datetime.datetime'>
+
+    def default(self, o):
+        """Implement this method in a subclass such that it returns
+        a serializable object for ``o``, or calls the base implementation
+        (to raise a ``TypeError``).
+    
+        For example, to support arbitrary iterators, you could
+        implement default like this::
+    
+            def default(self, o):
+                try:
+                    iterable = iter(o)
+                except TypeError:
+                    pass
+                else:
+                    return list(iterable)
+                # Let the base class default method raise the TypeError
+                return super().default(o)
+    
+        """
+>       raise TypeError(f'Object of type {o.__class__.__name__} '
+                        f'is not JSON serializable')
+E       TypeError: Object of type type is not JSON serializable
+
+/usr/local/lib/python3.12/json/encoder.py:180: TypeError
+________________________ TestCreatePost.test_status_201 ________________________
+
+self = <api_tests.TestCreatePost object at 0x7d526eb922d0>
+
+    def test_status_201(self):
+        mock_db.create_post.return_value = str(uuid4())
+        response = client.post("/create_post", json=VALID_POST)
+>       assert response.status_code == 201
+E       assert 400 == 201
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+api_tests.py:129: AssertionError
+_____________________ TestCreatePost.test_returns_post_id ______________________
+
+self = <api_tests.TestCreatePost object at 0x7d526eb92570>
+
+    def test_returns_post_id(self):
+        mock_db.create_post.return_value = str(uuid4())
+        response = client.post("/create_post", json=VALID_POST)
+>       assert "post_id" in response.json()
+E       assert 'post_id' in {'detail': "Post was not created: 'PostIn' object has no attribute 'author_id'"}
+E        +  where {'detail': "Post was not created: 'PostIn' object has no attribute 'author_id'"} = json()
+E        +    where json = <Response [400 Bad Request]>.json
+
+api_tests.py:134: AssertionError
+_______________ TestCreatePost.test_optional_id_and_time_omitted _______________
+
+self = <api_tests.TestCreatePost object at 0x7d526eb92840>
+
+    def test_optional_id_and_time_omitted(self):
+        mock_db.create_post.return_value = str(uuid4())
+        response = client.post("/create_post", json=VALID_POST)
+>       assert response.status_code == 201
+E       assert 400 == 201
+E        +  where 400 = <Response [400 Bad Request]>.status_code
+
+api_tests.py:139: AssertionError
+=============================== warnings summary ===============================
+../usr/local/lib/python3.12/site-packages/fastapi/testclient.py:1
+  /usr/local/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED api_tests.py::TestCreateUser::test_status_201 - TypeError: Object of t...
+FAILED api_tests.py::TestCreateUser::test_returns_id - TypeError: Object of t...
+FAILED api_tests.py::TestCreateUser::test_db_error_returns_400 - TypeError: O...
+FAILED api_tests.py::TestCreatePost::test_status_201 - assert 400 == 201
+FAILED api_tests.py::TestCreatePost::test_returns_post_id - assert 'post_id' ...
+FAILED api_tests.py::TestCreatePost::test_optional_id_and_time_omitted - asse...
+=================== 6 failed, 10 passed, 1 warning in 3.22s ====================
+

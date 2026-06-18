@@ -55,6 +55,14 @@ services:
     networks:
       - my-local-network
 
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    profiles:
+      - testing
+
+
 
 
 

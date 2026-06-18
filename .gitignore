@@ -5,3 +5,5 @@ __pycache__
 .env
 .dockerignore
 testQueries
+Test_output.txt
+.pytest_cache

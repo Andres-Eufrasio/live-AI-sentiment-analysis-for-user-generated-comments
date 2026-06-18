@@ -14,21 +14,16 @@ print("start")
 app = FastAPI()
 
 """Note pad
-Since things are a little messed up between my database and api I need to reslove them.
-To begin let's just go through one process and fix it.
-User commnet in
-precition
-to save prediction
+replace port with enviroment var
 """
 
 """
 Load model
 """
-class Main():
+class Model_tools():
     def __init__(self):
         self.load_model()
         
-
     def load_model(self):
         try:
             self.model=SentimentAnalysis()
@@ -48,19 +43,15 @@ class Main():
         #convert to list from dict
         model_labels = list(self.model.get_labels().values())
         return model_name, model_labels
-system = Main() 
+system = Model_tools() 
 
-
-
-with DatabaseCon() as conn:
-    database = DatabaseTools(conn)
 
 """
 pydantic shema
 """
 class CommentIn(BaseModel):
     content: str
-    author_id: Optional[UUID] = None
+    author_id: Optional[str] = None
     post_id: Optional[UUID] = None
     parent_comment_id: Optional[UUID] = None
 
@@ -109,6 +100,8 @@ def process_comment(comment: CommentIn):
     print(result)
     conn = DatabaseCon.get_conn()
     try:
+        flagged = False
+
         db = DatabaseTools(conn)
         comment_id = db.create_comment(
         comment.content,
@@ -116,20 +109,23 @@ def process_comment(comment: CommentIn):
         comment.author_id,
         comment.parent_comment_id
         )["id"]
-
+        if result["toxic"] > 0.4:
+            flagged = True
+        
         #add custom flag stuff here or make a function for it at least
         flag_id = db.create_flag(
             comment_id=comment_id,
-            active = False
+            active = flagged
         )["id"]
+        
 
         db.create_prediction(
             model_id=system.name,
-            confidence= result,
+            confidence= list(result.values()),
             flag_id= flag_id
             )
     except Exception as e:
-        raise RuntimeError(f"failure to process new commnet: {e}")
+        raise RuntimeError(f"failure to process new comment: {e}")
     finally:
         DatabaseCon.put_conn(conn)
         
@@ -187,14 +183,24 @@ def post_comment(comment: CommentIn, background_tasks: BackgroundTasks):
     background_tasks.add_task(process_comment, comment)
     return {"status": "queued"}
 
-"""
-# finish this bit
-@app.get("/predictions")
+@app.get("/flags", status_code=200)
 def get_predictions():
-    return {"predictions": database}
-"""
+    conn = DatabaseCon.get_conn()
+    try:
+        db = DatabaseTools(conn)
+        flags = db.get_unreviewed_flags()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Flags were not retrieved: {str(e)}")
+    finally:
+        DatabaseCon.put_conn(conn)
+    return flags
 
-
+@app.post("/moderate", status_code=201)
+def moderate_post():
+    conn = DatabaseCon.get_conn()
+    try:
+        db = DatabaseCon.get_conn()
+        
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

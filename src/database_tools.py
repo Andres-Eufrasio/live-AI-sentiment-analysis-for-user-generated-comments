@@ -6,6 +6,10 @@ from datetime import datetime
 from uuid import UUID
 
 psycopg2.extras.register_uuid()
+"""
+Notes add some comments on the tooling
+add runtime errors to raise
+"""
 
 """
 Pooled database connection
@@ -47,7 +51,7 @@ class DatabaseCon:
     def close_pool(cls):
         cls._pool.closeall()
 
-    # use as --- DatabaseCon() as conn
+    # use as --- DatabaseCon() as connection to pool
     def __enter__(self):
         self._conn = self.get_conn()
         return self._conn
@@ -57,18 +61,28 @@ class DatabaseCon:
         return False
 
 
+def tuples_to_dict(rows, columns, key: str):
+    return {
+        row[columns.index(key)]: dict(zip(columns, row))
+        for row in rows
+    }
+
 class DatabaseTools:
     def __init__(self, conn):
         self.conn = conn
     """
     Gets
     """
-    def get_unreviewed_flags(self):
+    def get_unreviewed_flags(self) -> dict:
         with self.conn.cursor() as cur:
             cur.execute("SELECT * FROM unreviewed_flags;")
-            return cur.fetchall()
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            return tuples_to_dict(rows, columns, "id")
+        
+        
 
-    def get_active_model(self):
+    def get_active_model(self) -> str:
         with self.conn.cursor() as cur:
             #Returns either 1 or 0 indexes
             cur.execute("SELECT name FROM model WHERE active = TRUE;")
@@ -80,7 +94,7 @@ class DatabaseTools:
     
 
     """
-    Inserts
+    Inserts/creations
     """
     def create_comment(
         self,
@@ -109,9 +123,9 @@ class DatabaseTools:
                 self.conn.commit()
                 return {"id": result[0]}
 
-        except Exception:
+        except Exception as e:
             self.conn.rollback()
-            raise
+            raise RuntimeError(f"Failed to create comment: {e}")  
 
     def create_user(
         self,
@@ -156,9 +170,9 @@ class DatabaseTools:
                     self.conn.commit()
                     return {"id": result[0]}
 
-        except Exception:
+        except Exception as e:
             self.conn.rollback()
-            raise
+            raise RuntimeError(f"Failed to create user: {e}")  
 
     def create_post(
         self,
@@ -186,9 +200,9 @@ class DatabaseTools:
                 self.conn.commit()
                 return {"id": result[0]}
 
-        except Exception:
+        except Exception as e:
             self.conn.rollback()
-            raise
+            raise RuntimeError(f"Failed to create post: {e}")  
 
     def create_model(
         self,
@@ -214,14 +228,15 @@ class DatabaseTools:
                 self.conn.commit()
                 return {"name": result[0]}
             
-        except Exception:
+        except Exception as e:
             self.conn.rollback()
-            raise  
+            raise RuntimeError(f"Failed to create model: {e}")  
 
     def create_flag(
         self,
         comment_id: list[str],
-        user_report_id: UUID | None = None
+        user_report_id: UUID | None = None,
+        active: bool | None = True
     ):
         try:
             with self.conn.cursor() as cur:
@@ -230,19 +245,20 @@ class DatabaseTools:
                     INSERT INTO flag (
                         comment_id,
                         user_report_id,
+                        active
                     )
-                    VALUES (%s, %s)
+                    VALUES (%s, %s, %s)
                     RETURNING id;
                     """,
-                    (comment_id, user_report_id),
+                    (comment_id, user_report_id, active),
                 )
                 result = cur.fetchone()
                 self.conn.commit()
                 return {"id": result[0]}
             
-        except Exception:
+        except Exception as e:
             self.conn.rollback()
-            raise  
+            raise RuntimeError(f"Failed to create flag: {e}")  
 
     def create_prediction(
         self,
@@ -268,10 +284,9 @@ class DatabaseTools:
                 self.conn.commit()
                 return {"name": result[0]}
             
-        except Exception:
+        except Exception as e:
             self.conn.rollback()
-            raise  
-
+            raise RuntimeError(f"Failed to create prediction: {e}")  
 
     def create_moderation_decision(
         self,
@@ -297,17 +312,80 @@ class DatabaseTools:
                     """,
                     (comment_id, moderator_id, flag_id, prediction_id, decision),
                 )
+
                 result = cur.fetchone()
                 self.conn.commit()
+
                 return {"id": result[0]}
 
-        except Exception:
+        except Exception as e:
             self.conn.rollback()
-            raise
-
-
+            raise RuntimeError(f"Failed to create moderation decision: {e}")
         
-    
+    def deactivate_flag(
+        self,
+        flag_id: UUID,
+    ):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE flag
+                    SET active = FALSE
+                    WHERE id = %s
+                    RETURNING id, active;
+                    """,
+                    (flag_id,),
+                )
+
+                result = cur.fetchone()
+                self.conn.commit()
+
+                if result is None:
+                    return {"updated": False, "message": "Flag not found"}
+
+                return {
+                    "updated": True,
+                    "id": result[0],
+                    "active": result[1],
+                }
+
+        except Exception as e:
+            self.conn.rollback()
+            raise RuntimeError(f"Failed to deactivate flag: {e}")
+
+    def get_flagged_users(self):
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT 
+                        u.id,
+                        u.username,
+                        u.banned,
+                        COUNT(f.id) AS flag_count
+                    FROM "user" u
+                    JOIN flag f ON f.user_id = u.id
+                    GROUP BY u.id, u.username, u.banned
+                    ORDER BY flag_count DESC;
+                    """
+                )
+
+                rows = cur.fetchall()
+
+                return [
+                    {
+                        "user_id": r[0],
+                        "username": r[1],
+                        "banned": r[2],
+                        "flag_count": r[3],
+                    }
+                    for r in rows
+                ]
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to fetch flagged users: {e}")
+        
         
 
 

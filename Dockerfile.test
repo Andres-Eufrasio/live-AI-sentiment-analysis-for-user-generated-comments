@@ -1,0 +1,13 @@
+FROM python:3.12-slim
+ 
+WORKDIR /src
+ 
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir pytest httpx
+ 
+COPY src/ .
+
+CMD ["pytest", "api_tests.py", "-v"]
+#To run tests use:
+#docker compose run --rm test > Test_output.txt 2>&1
