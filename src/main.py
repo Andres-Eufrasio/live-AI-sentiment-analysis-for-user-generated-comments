@@ -15,6 +15,8 @@ app = FastAPI()
 
 """Note pad
 replace port with enviroment var
+I need to put more contraints on comments doing things like .lower and removing emojis for normalization and for it to work better with the AI
+also need to put that into the tests
 """
 
 """

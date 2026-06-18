@@ -4,6 +4,12 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 from datetime import datetime
 
+"""
+Notes
+organize the testing a little
+
+"""
+
 
 
 """
@@ -38,7 +44,9 @@ with (
 client = TestClient(app)
 
 
-
+"""
+Fixtues
+"""
 @pytest.fixture(autouse=True)
 def reset_db_mock():
     """Reset call counts on the db mock between tests."""
@@ -59,7 +67,9 @@ def mock_predict_negative():
     with patch.object(system, "predict", return_value=0.12):
         yield
 
-# Get tests
+"""
+Connection tests
+"""
 class TestRoot:
     def test_status_200(self):
         response = client.get("/")
@@ -77,8 +87,8 @@ class TestRoot:
         response = client.get("/")
         assert "info" in response.json()
 
-#Create user
 
+"""Create users tests"""
 VALID_USER = {
     "id": str(uuid4()),
     "username": "testuser",
@@ -97,7 +107,7 @@ class TestCreateUser:
         response = client.post("/create_user", json=VALID_USER)
         assert "id" in response.json()
 
-    def test_optional_fields_omitted(self):
+    def test_optional_minimum(self):
         mock_db.create_user.return_value = str(uuid4())
         response = client.post("/create_user", json={"id": str(uuid4()), "username": "minimal"})
         assert response.status_code == 201
@@ -116,7 +126,8 @@ class TestCreateUser:
         assert response.status_code == 400
         mock_db.create_user.side_effect = None
 
-# Create posts
+
+"""Create posts tests"""
 VALID_POST = {
     "content": "Hello world post",
     "user_id": str(uuid4()),
@@ -151,3 +162,41 @@ class TestCreatePost:
         response = client.post("/create_post", json=VALID_POST)
         assert response.status_code == 400
         mock_db.create_post.side_effect = None
+
+"""test user comments"""
+VALID_COMMENT = {
+    "content": "This post is amazing and I suport is 100 percent.",
+    "author_id": str(uuid4()),
+    "post_id": str(uuid4()),
+}
+# use ** for dict unpacking to invalidate certain reponses
+class TestUserComments:
+    def test_valid_comment_returns_202_or_queued(self):
+        response = client.post("/user_comments", json=VALID_COMMENT)
+        assert response.status_code == 201
+        assert response.json().get("status") == "queued"
+
+    def test_empty_content_returns_400(self):
+        testload = {**VALID_COMMENT, "content": ""}
+        assert client.post("/user_comments", json=testload).status_code == 400
+
+    def test_empty_content_error_message(self):
+        testload = {**VALID_COMMENT, "content": ""}
+        response = client.post("/user_comments", json=testload)
+        assert "empty" in response.json()["detail"].lower()
+
+    def test_content_at_max_length_is_accepted(self):
+        testload = {**VALID_COMMENT, "content": "t" * 2000}
+        assert client.post("/user_comments", json=testload).status_code == 201
+
+    def test_content_over_max_length_returns_400(self):
+        testload = {**VALID_COMMENT, "content": "t" * 2001}
+        assert client.post("/user_comments", json=testload).status_code == 400
+
+    def test_content_over_max_length_error_message(self):
+        testload = {**VALID_COMMENT, "content": "t" * 2001}
+        response = client.post("/user_comments", json=testload)
+        assert "2000" in response.json()["detail"]
+
+    def test_missing_content_field_422(self):
+        assert client.post("/user_comments", json={}).status_code == 422
