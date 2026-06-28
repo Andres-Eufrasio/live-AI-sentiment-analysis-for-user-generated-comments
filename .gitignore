@@ -7,3 +7,4 @@ __pycache__
 testQueries
 Test_output.txt
 .pytest_cache
+output.txt

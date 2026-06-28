@@ -36,7 +36,7 @@ CREATE TABLE model (
 -- Post
 -- ------------------------------------------------------------
 CREATE TABLE post (
-    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    id          TEXT        PRIMARY KEY,
     content     TEXT        NOT NULL,
     author_id   TEXT        NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
     posted_time TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -49,7 +49,7 @@ CREATE TABLE comment (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     content             TEXT        NOT NULL,
     author_id           TEXT        REFERENCES "user"(id) ON DELETE CASCADE,
-    post_id             UUID        REFERENCES post(id) ON DELETE CASCADE,
+    post_id             TEXT        REFERENCES post(id) ON DELETE CASCADE,
     parent_comment_id   UUID        REFERENCES comment(id) ON DELETE SET NULL,
     posted_time         TIMESTAMPTZ NOT NULL DEFAULT now()
 );

@@ -176,16 +176,17 @@ class DatabaseTools:
 
     def create_post(
         self,
+        id: str,
         content: str,
         author_id: str,
         posted_time: datetime | None = None,
-        id: UUID | None = None
+        
     ): 
         try:
             with self.conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO comment (
+                    INSERT INTO post (
                         id,
                         content,
                         author_id,

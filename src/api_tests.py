@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 """
 Notes
@@ -17,7 +17,7 @@ Bootstrap mock
 """
 # Precition mock
 mock_model = MagicMock()
-mock_model.predict.return_value = 0.95
+mock_model.predict.return_value = {"toxic": 0.5}
 mock_model.get_name.return_value = "test-model-v1"
 mock_model.get_labels.return_value = {0: "negative", 1: "positive"}
 
@@ -92,18 +92,18 @@ class TestRoot:
 VALID_USER = {
     "id": str(uuid4()),
     "username": "testuser",
-    "created_at": datetime,
+    "created_at": datetime.now(timezone.utc).isoformat(),
     "banned": False,
 }
 
 class TestCreateUser:
     def test_status_201(self):
-        mock_db.create_user.return_value = VALID_USER["id"]
+        mock_db.create_user.return_value = {"id": VALID_USER["id"]}
         response = client.post("/create_user", json=VALID_USER)
         assert response.status_code == 201
 
     def test_returns_id(self):
-        mock_db.create_user.return_value = VALID_USER["id"]
+        mock_db.create_user.return_value = {"id": VALID_USER["id"]}
         response = client.post("/create_user", json=VALID_USER)
         assert "id" in response.json()
 
@@ -129,28 +129,29 @@ class TestCreateUser:
 
 """Create posts tests"""
 VALID_POST = {
+    "id": "testID",
     "content": "Hello world post",
-    "user_id": str(uuid4()),
+    "author_id": str(uuid4()),
 }
 
 class TestCreatePost:
     def test_status_201(self):
-        mock_db.create_post.return_value = str(uuid4())
+        mock_db.create_post.return_value = {"id": VALID_POST["id"]}
         response = client.post("/create_post", json=VALID_POST)
         assert response.status_code == 201
 
     def test_returns_post_id(self):
-        mock_db.create_post.return_value = str(uuid4())
+        mock_db.create_post.return_value = {"id": VALID_POST["id"]}
         response = client.post("/create_post", json=VALID_POST)
-        assert "post_id" in response.json()
+        assert "id" in response.json()
 
     def test_optional_id_and_time_omitted(self):
-        mock_db.create_post.return_value = str(uuid4())
+        mock_db.create_post.return_value = {"id": VALID_POST["id"]}
         response = client.post("/create_post", json=VALID_POST)
         assert response.status_code == 201
 
     def test_missing_content_422(self):
-        response = client.post("/create_post", json={"user_id": str(uuid4())})
+        response = client.post("/create_post", json={"author_id": str(uuid4())})
         assert response.status_code == 422
 
     def test_missing_user_id_422(self):
@@ -165,6 +166,7 @@ class TestCreatePost:
 
 """test user comments"""
 VALID_COMMENT = {
+    "id": "CommentID",
     "content": "This post is amazing and I suport is 100 percent.",
     "author_id": str(uuid4()),
     "post_id": str(uuid4()),
@@ -173,7 +175,7 @@ VALID_COMMENT = {
 class TestUserComments:
     def test_valid_comment_returns_202_or_queued(self):
         response = client.post("/user_comments", json=VALID_COMMENT)
-        assert response.status_code == 201
+        assert response.status_code == 202
         assert response.json().get("status") == "queued"
 
     def test_empty_content_returns_400(self):
@@ -183,11 +185,11 @@ class TestUserComments:
     def test_empty_content_error_message(self):
         testload = {**VALID_COMMENT, "content": ""}
         response = client.post("/user_comments", json=testload)
-        assert "empty" in response.json()["detail"].lower()
+        assert "empty" in response.json()["detail"]
 
     def test_content_at_max_length_is_accepted(self):
         testload = {**VALID_COMMENT, "content": "t" * 2000}
-        assert client.post("/user_comments", json=testload).status_code == 201
+        assert client.post("/user_comments", json=testload).status_code == 202
 
     def test_content_over_max_length_returns_400(self):
         testload = {**VALID_COMMENT, "content": "t" * 2001}

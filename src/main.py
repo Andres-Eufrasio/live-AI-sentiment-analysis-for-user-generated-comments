@@ -10,7 +10,7 @@ from typing import Optional
 from database_tools import DatabaseTools, DatabaseCon
 from datetime import datetime
 
-print("start")
+
 app = FastAPI()
 
 """Note pad
@@ -52,6 +52,7 @@ system = Model_tools()
 pydantic shema
 """
 class CommentIn(BaseModel):
+    id: str
     content: str
     author_id: Optional[str] = None
     post_id: Optional[UUID] = None
@@ -64,9 +65,9 @@ class UserIn(BaseModel):
     banned: Optional[bool] = False
 
 class PostIn(BaseModel):
+    id: str
     content: str
-    user_id: str
-    id: Optional[UUID] = None
+    author_id: str
     posted_time: Optional[datetime] = None
 
 class UserReportIn(BaseModel):
@@ -144,7 +145,7 @@ def create_user(user: UserIn):
     conn = DatabaseCon.get_conn()
     try:
         db = DatabaseTools(conn)
-        user_id = db.create_user(
+        dict_user_id = db.create_user(
         user.id,
         user.username,
         user.created_at,
@@ -154,14 +155,14 @@ def create_user(user: UserIn):
         raise HTTPException(status_code=400, detail=f"User was not created: {str(e)}")
     finally:
         DatabaseCon.put_conn(conn)
-    return {"id": f"{user_id}"}
+    return dict_user_id
         
 @app.post("/create_post", status_code=201)
 def create_post(post: PostIn):
     conn = DatabaseCon.get_conn()
     try:
         db = DatabaseTools(conn)
-        post_id = db.create_user(
+        dict_post_id = db.create_post(
         post.id,
         post.content,
         post.author_id,
@@ -171,10 +172,10 @@ def create_post(post: PostIn):
         raise HTTPException(status_code=400, detail=f"Post was not created: {str(e)}")
     finally:
         DatabaseCon.put_conn(conn)
-    return {"post_id": f"{post_id}"}
+    return dict_post_id
 
 
-@app.post("/user_comments", status_code=201)
+@app.post("/user_comments", status_code=202)
 def post_comment(comment: CommentIn, background_tasks: BackgroundTasks):
     if comment.content == "":
         # bad request
@@ -198,11 +199,24 @@ def get_predictions():
     return flags
 
 @app.post("/moderate", status_code=201)
-def moderate_post():
+def moderate_post(modDec: ModerationDecisionIn):
     conn = DatabaseCon.get_conn()
     try:
-        db = DatabaseCon.get_conn()
-        
+        db = DatabaseTools(conn)
+        db.create_moderation_decision(
+            modDec.comment_id,
+            modDec.moderator_id,
+            modDec.flag_id,
+            modDec.prediction_id,
+            modDec.decision
+        )
+        db.deactivate_flag(
+            modDec.flag_id
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Flags were not retrieved: {str(e)}")
+    finally:
+        DatabaseCon.put_conn(conn)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
