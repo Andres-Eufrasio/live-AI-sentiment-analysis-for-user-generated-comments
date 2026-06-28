@@ -9,6 +9,7 @@ from uuid import UUID
 from typing import Optional
 from database_tools import DatabaseTools, DatabaseCon
 from datetime import datetime
+from lang_detection import DetectLanguage
 
 
 app = FastAPI()
@@ -46,6 +47,9 @@ class Model_tools():
         model_labels = list(self.model.get_labels().values())
         return model_name, model_labels
 system = Model_tools() 
+
+"""Language detection"""
+langDetect = DetectLanguage()
 
 
 """
@@ -95,11 +99,17 @@ class ModerationDecisionIn(BaseModel):
     decision: bool      
 
 
-
+"""
+Notes
+Implement not just using toxic
+"""
 
 """My background tasks"""
 def process_comment(comment: CommentIn):
-    result = system.predict(comment.content)
+    if langDetect.detect_english(comment.content):
+        result = system.predict(comment.content)
+    else:
+        result = {"langauge": "not_english"}
     print(result)
     conn = DatabaseCon.get_conn()
     try:
@@ -113,6 +123,8 @@ def process_comment(comment: CommentIn):
         comment.parent_comment_id
         )["id"]
         if result["toxic"] > 0.4:
+            flagged = True
+        elif result["langauge": "not_english"]:
             flagged = True
         
         #add custom flag stuff here or make a function for it at least
@@ -207,8 +219,8 @@ def moderate_post(modDec: ModerationDecisionIn):
             modDec.comment_id,
             modDec.moderator_id,
             modDec.flag_id,
-            modDec.prediction_id,
-            modDec.decision
+            modDec.decision,
+            modDec.prediction_id
         )
         db.deactivate_flag(
             modDec.flag_id

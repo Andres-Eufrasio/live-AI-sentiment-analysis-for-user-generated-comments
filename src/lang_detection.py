@@ -1,15 +1,25 @@
 from lingua import Language, LanguageDetectorBuilder
 
-class Detectlanguage (Language: Lang):
+class DetectLanguage:
     def __init__(self):
         self.detector = LanguageDetectorBuilder.from_languages(
-            Lang
-            
+            Language.ENGLISH
         ).build()
 
-    def is_english(text: str) -> bool:
-        return detector.detect_language_of(text) == Language.ENGLISH
+    def is_english(self, text: str) -> bool:
+        detected = self.detector.detect_language_of(text)
+        return detected == Language.ENGLISH
 
-if text.len() > 50:
-    prediction = is_english("test, this is the english language")
-    print(prediction)
+    def detect_english(self, text):
+        if len(text) > 35:
+            prediction = self.is_english(text)
+            return True
+        else:
+            return False
+
+detector = DetectLanguage()
+
+
+
+if __name__ == "__main__":
+    text = "test, this is the english language"

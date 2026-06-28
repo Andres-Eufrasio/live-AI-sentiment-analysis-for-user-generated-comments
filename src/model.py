@@ -74,6 +74,8 @@ class SentimentAnalysis():
             return json_prediction
         else:
             return prediction
+        
+        
 
 
 if __name__ == "__main__":

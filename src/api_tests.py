@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 
 """
 Notes
-organize the testing a little
-
+finsih the flag stuff 
+line 32
+line 209
 """
 
 
@@ -28,6 +29,7 @@ mock_db.create_flag.return_value = {"id": str(uuid4())}
 mock_db.create_prediction.return_value = {"id": str(uuid4())}
 mock_db.create_user.return_value = str(uuid4())
 mock_db.create_post.return_value = str(uuid4())
+mock_db.get_flags = {"id": ""}
 
 with (
     patch("model.SentimentAnalysis", return_value=mock_model),
@@ -182,6 +184,10 @@ class TestUserComments:
         testload = {**VALID_COMMENT, "content": ""}
         assert client.post("/user_comments", json=testload).status_code == 400
 
+    def test_empty_id_returns_400(self):
+        testload = {**VALID_COMMENT, "id": ""}
+        assert client.post("/user_comments", json=testload).status_code == 400
+
     def test_empty_content_error_message(self):
         testload = {**VALID_COMMENT, "content": ""}
         response = client.post("/user_comments", json=testload)
@@ -202,3 +208,91 @@ class TestUserComments:
 
     def test_missing_content_field_422(self):
         assert client.post("/user_comments", json={}).status_code == 422
+
+"""test Flags"""
+class TestFlags:
+    def test_get_flags_returns_200_and_list(self):
+        response = client.get("/flags")
+
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
+        assert len(response.json()) == 2
+
+    def test_get_flags_structure(self):
+        response = client.get("/flags")
+        data = response.json()
+
+        assert "id" in data[0]
+        assert "flag" in data[0]
+
+    def test_get_flags_db_error_returns_500(self):
+        mock_db.get_unreviewed_flags.side_effect = Exception("DB down")
+
+        response = client.get("/flags")
+
+        assert response.status_code == 500
+        assert "Flags were not retrieved" in response.json()["detail"]
+
+"""Test create moderator decisions"""
+VALID_DECISION = {
+    "comment_id": str(uuid4()),
+    "moderator_id": str(uuid4()),
+    "flag_id": str(uuid4()),
+    "decision": False,
+    "prediction_id": str(uuid4()),
+}
+
+class TestModeratorDecisions:
+    def test_valid_decision_returns_201(self):
+        mock_db.create_moderation_decision.return_value = {"id": str(uuid4())}
+        response = client.post("/moderate", json=VALID_DECISION)
+        assert response.status_code == 201
+
+    def test_calls_create_moderation_decision(self):
+        mock_db.create_moderation_decision.return_value = {"id": str(uuid4())}
+        client.post("/moderate", json=VALID_DECISION)
+        mock_db.create_moderation_decision.assert_called_once()
+
+    def test_calls_deactivate_flag(self):
+        mock_db.create_moderation_decision.return_value = {"id": str(uuid4())}
+        client.post("/moderate", json=VALID_DECISION)
+        mock_db.deactivate_flag.assert_called_once_with(VALID_DECISION["flag_id"])
+
+    def test_missing_comment_id_returns_422(self):
+        testload = {**VALID_DECISION}
+        del testload["comment_id"]
+        assert client.post("/moderate", json=testload).status_code == 422
+
+    def test_missing_moderator_id_returns_422(self):
+        testload = {**VALID_DECISION}
+        del testload["moderator_id"]
+        assert client.post("/moderate", json=testload).status_code == 422
+
+    def test_missing_flag_id_returns_422(self):
+        testload = {**VALID_DECISION}
+        del testload["flag_id"]
+        assert client.post("/moderate", json=testload).status_code == 422
+
+    def test_missing_decision_returns_422(self):
+        testload = {**VALID_DECISION}
+        del testload["decision"]
+        assert client.post("/moderate", json=testload).status_code == 422
+
+    def test_db_error_on_create_returns_400(self):
+        mock_db.create_moderation_decision.side_effect = Exception("DB constraint violation")
+        response = client.post("/moderate", json=VALID_DECISION)
+        assert response.status_code == 400
+        mock_db.create_moderation_decision.side_effect = None
+
+    def test_db_error_on_deactivate_returns_400(self):
+        mock_db.create_moderation_decision.return_value = {"id": str(uuid4())}
+        mock_db.deactivate_flag.side_effect = Exception("DB error")
+        response = client.post("/moderate", json=VALID_DECISION)
+        assert response.status_code == 400
+        mock_db.deactivate_flag.side_effect = None
+
+    def test_db_error_detail_message(self):
+        mock_db.create_moderation_decision.side_effect = Exception("DB constraint violation")
+        response = client.post("/moderate", json=VALID_DECISION)
+        assert "Flags were not retrieved" in response.json()["detail"]
+        mock_db.create_moderation_decision.side_effect = None
