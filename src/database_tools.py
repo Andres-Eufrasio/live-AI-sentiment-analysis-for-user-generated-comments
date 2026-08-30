@@ -265,29 +265,33 @@ class DatabaseTools:
         self,
         model_id: str,
         confidence: list[float],
-        flag_id : UUID | None = None,
+        flag_id: UUID | None = None,
     ):
         try:
             with self.conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO model (
+                    INSERT INTO prediction (
                         flag_id,
                         model_id,
-                        confidence,
+                        confidence
                     )
                     VALUES (%s, %s, %s)
-                    RETURNING name;
+                    RETURNING id;
                     """,
                     (flag_id, model_id, confidence),
                 )
+
                 result = cur.fetchone()
                 self.conn.commit()
-                return {"name": result[0]}
-            
+
+                return {"id": result[0]}
+
         except Exception as e:
             self.conn.rollback()
-            raise RuntimeError(f"Failed to create prediction: {e}")  
+            raise RuntimeError(
+                f"Failed to create prediction: {e}"
+            ) from e
 
     def create_moderation_decision(
         self,
@@ -388,6 +392,98 @@ class DatabaseTools:
             raise RuntimeError(f"Failed to fetch flagged users: {e}")
         
         
+
+    def get_audit_log(self):
+        """
+        Returns the complete moderation audit history.
+
+        Includes:
+        - Comment information
+        - Comment author
+        - Prediction/model information
+        - All prediction scores
+        - Moderator information
+        - Moderation decision
+        - Moderation timestamp
+
+        Flags that have not yet been moderated are also included.
+        """
+
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        f.id AS flag_id,
+                        f.comment_id,
+
+                        c.content AS comment_content,
+                        c.posted_time AS comment_timestamp,
+
+                        author.username AS author_username,
+
+                        p.id AS prediction_id,
+                        p.model_id AS model_name,
+                        p.confidence AS prediction_scores,
+
+                        md.id AS moderation_decision_id,
+                        md.decision AS decision,
+                        md.time_stamp AS moderation_timestamp,
+
+                        m.id AS moderator_id,
+                        m.username AS moderator_username
+
+                    FROM flag f
+
+                    JOIN comment c
+                        ON c.id = f.comment_id
+
+                    LEFT JOIN "user" author
+                        ON author.id = c.author_id
+
+                    LEFT JOIN prediction p
+                        ON p.flag_id = f.id
+
+                    LEFT JOIN moderation_decision md
+                        ON md.flag_id = f.id
+
+                    LEFT JOIN moderator m
+                        ON m.id = md.moderator_id
+
+                    ORDER BY
+                        COALESCE(md.time_stamp, c.posted_time) DESC;
+                    """
+                )
+
+                rows = cur.fetchall()
+
+                return [
+                    {
+                        "flag_id": row[0],
+                        "comment_id": row[1],
+                        "comment_content": row[2],
+                        "comment_timestamp": row[3],
+                        "author_username": row[4],
+
+                        "prediction_id": row[5],
+                        "model_name": row[6],
+                        "prediction_scores": row[7],
+
+                        "moderation_decision_id": row[8],
+                        "decision": row[9],
+                        "moderation_timestamp": row[10],
+
+                        "moderator_id": row[11],
+                        "moderator_username": row[12],
+                    }
+                    for row in rows
+                ]
+
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to fetch audit log: {e}"
+            ) from e
+
 
 
 

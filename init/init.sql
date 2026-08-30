@@ -123,11 +123,36 @@ CREATE UNIQUE INDEX active_model
 -- views
 -- ------------------------------------------------------------
 
-CREATE VIEW unreviewed_flags AS
-SELECT f.id, f.comment_id, c.content
+CREATE OR REPLACE VIEW unreviewed_flags AS
+SELECT
+    f.id,
+    f.comment_id,
+    c.content,
+
+    c.author_id,
+    u.username AS author_username,
+
+    p.id AS prediction_id,
+    p.model_id AS model_name,
+
+    -- All labels and their corresponding confidence scores
+    m.labels AS prediction_labels,
+    p.confidence AS prediction_scores
+
 FROM flag f
-JOIN comment c 
+
+JOIN comment c
     ON c.id = f.comment_id
+
+JOIN "user" u
+    ON u.id = c.author_id
+
+LEFT JOIN prediction p
+    ON p.flag_id = f.id
+
+LEFT JOIN model m
+    ON m.name = p.model_id
+
 WHERE NOT EXISTS (
     SELECT 1
     FROM moderation_decision md
@@ -138,6 +163,10 @@ WHERE NOT EXISTS (
 -- ------------------------------------------------------------
 -- Test values
 -- ------------------------------------------------------------
+INSERT INTO "moderator" (id, username, password_hash)
+VALUES
+('8410a16f-032d-4ebf-a128-c0bfbb4e7df4', 'admin', 'hash');
+
 INSERT INTO "user" (id, username, created_at, banned)
 VALUES
     ('user1', 'test',   now(), false),

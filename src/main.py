@@ -112,41 +112,40 @@ Implement not just using toxic
 
 """My background tasks"""
 def process_comment(comment: CommentIn):
-    if langDetect.detect_english(comment.content):
-        result = system.predict(comment.content)
-    else:
-        result = {"langauge": "not_english"}
-    print(result)
     conn = DatabaseCon.get_conn()
-    try:
-        flagged = False
 
+    try:
         db = DatabaseTools(conn)
+
+        result = system.predict(comment.content)
+
+        print(result)
+
+        flagged = result.get("toxic", 0) > 0.4
+
         comment_id = db.create_comment(
-        comment.content,
-        comment.post_id,
-        comment.author_id,
-        comment.parent_comment_id
+            comment.content,
+            comment.post_id,
+            comment.author_id,
+            comment.parent_comment_id
         )["id"]
-        if result["toxic"] > 0.4:
-            flagged = True
-        elif result["langauge": "not_english"]:
-            flagged = True
-        
-        #add custom flag stuff here or make a function for it at least
+
         flag_id = db.create_flag(
             comment_id=comment_id,
-            active = flagged
+            active=flagged
         )["id"]
-        
 
         db.create_prediction(
             model_id=system.name,
-            confidence= list(result.values()),
-            flag_id= flag_id
-            )
+            confidence=list(result.values()),
+            flag_id=flag_id
+        )
+
     except Exception as e:
-        raise RuntimeError(f"failure to process new comment: {e}")
+        raise RuntimeError(
+            f"Failure to process new comment: {e}"
+        ) from e
+
     finally:
         DatabaseCon.put_conn(conn)
         
@@ -194,15 +193,24 @@ def create_post(post: PostIn):
 
 
 @app.post("/user_comments", status_code=202)
-def post_comment(comment: CommentIn, background_tasks: BackgroundTasks):
-    if comment.content == "":
-        # bad request
-        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+def post_comment(
+    comment: CommentIn,
+    background_tasks: BackgroundTasks
+):
+    if not comment.content.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Comment cannot be empty"
+        )
+
     if len(comment.content) > 2000:
-        # bad request
-        raise HTTPException(status_code=400, detail="Comment cannot be longer than 2000 characters")
-    background_tasks.add_task(process_comment, comment)
-    return {"status": "queued"}
+        raise HTTPException(
+            status_code=400,
+            detail="Comment cannot be longer than 2000 characters"
+        )
+    process_comment(comment)
+    return {"status": "added"}
+
 
 @app.get("/flags", status_code=200)
 def get_predictions():
@@ -235,6 +243,28 @@ def moderate_post(modDec: ModerationDecisionIn):
         raise HTTPException(status_code=400, detail=f"Flags were not retrieved: {str(e)}")
     finally:
         DatabaseCon.put_conn(conn)
+
+
+@app.get("/audit-log", status_code=200)
+def get_audit_log():
+    conn = DatabaseCon.get_conn()
+
+    try:
+        db = DatabaseTools(conn)
+        audit_log = db.get_audit_log()
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Audit log was not retrieved: {str(e)}"
+        )
+
+    finally:
+        DatabaseCon.put_conn(conn)
+
+    return audit_log
+
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
