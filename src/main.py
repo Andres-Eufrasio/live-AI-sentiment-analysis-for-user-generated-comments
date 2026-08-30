@@ -3,6 +3,7 @@ Created by Andres Eufrasio Tinajero
 """
 import uvicorn
 from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from model import SentimentAnalysis
 from uuid import UUID
@@ -13,7 +14,12 @@ from lang_detection import DetectLanguage
 
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 """Note pad
 replace port with enviroment var
 I need to put more contraints on comments doing things like .lower and removing emojis for normalization and for it to work better with the AI

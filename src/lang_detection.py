@@ -1,5 +1,10 @@
 from lingua import Language, LanguageDetectorBuilder
 
+"""
+Notes
+add langauge swiching
+"""
+
 class DetectLanguage:
     def __init__(self):
         self.detector = LanguageDetectorBuilder.from_languages(
