@@ -55,6 +55,18 @@ function App() {
             </NavLink>
 
             <NavLink
+              to="/audit-log"
+              className={({ isActive }) =>
+                isActive ? "sidebar-link active" : "sidebar-link"
+              }
+              title={!sidebarOpen ? "Audit Log" : ""}
+            >
+              <span className="sidebar-icon">▤</span>
+              {sidebarOpen && <span>Audit Log</span>}
+            </NavLink>
+
+
+            <NavLink
               to="/reviewed"
               className={({ isActive }) =>
                 isActive ? "sidebar-link active" : "sidebar-link"
@@ -112,6 +124,12 @@ function App() {
         >
           <Routes>
             <Route path="/" element={<ModerationDashboard />} />
+
+            <Route
+              path="/audit-log"
+              element={<AuditLog />}
+            
+            />
 
             <Route
               path="/reviewed"

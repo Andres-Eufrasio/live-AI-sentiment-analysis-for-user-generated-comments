@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
+import { fetchAuditLog } from "../api.jsx";
 
 function AuditLog() {
   const [auditLog, setAuditLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  
+  const [filter, setFilter] = useState("all");
+
+  // move to api.jsx
   async function fetchAuditLog() {
     try {
       setLoading(true);
@@ -17,7 +22,6 @@ function AuditLog() {
       }
 
       const data = await response.json();
-
       setAuditLog(data);
     } catch (err) {
       setError(err.message);
@@ -29,6 +33,21 @@ function AuditLog() {
   useEffect(() => {
     fetchAuditLog();
   }, []);
+
+
+    useEffect(() => {
+    fetchAuditLog();
+
+
+    const interval = setInterval(() => {
+        fetchAuditLog();
+    }, 5000);
+
+ 
+    return () => clearInterval(interval);
+    }, []);
+
+
 
   function formatTimestamp(timestamp) {
     if (!timestamp) {
@@ -70,13 +89,43 @@ function AuditLog() {
     return decision ? "Approved" : "Removed";
   }
 
+  function getEventLabel(type) {
+    switch (type) {
+      case "comment":
+        return "Comment";
+
+      case "moderation":
+        return "Moderator Decision";
+
+      default:
+        return "Other";
+    }
+  }
+
+  const filteredAuditLog = auditLog.filter((entry) => {
+    if (filter === "all") {
+      return true;
+    }
+
+    if (filter === "other") {
+      return (
+        entry.type !== "comment" &&
+        entry.type !== "moderation"
+      );
+    }
+
+    return entry.type === filter;
+  });
+
   if (loading) {
     return (
       <div className="audit-page">
         <div className="audit-header">
           <div>
             <h1>Audit Log</h1>
-            <p>Complete history of flagged comments and moderation actions.</p>
+            <p>
+              Complete history of system activity and moderation actions.
+            </p>
           </div>
         </div>
 
@@ -93,7 +142,9 @@ function AuditLog() {
         <div className="audit-header">
           <div>
             <h1>Audit Log</h1>
-            <p>Complete history of flagged comments and moderation actions.</p>
+            <p>
+              Complete history of system activity and moderation actions.
+            </p>
           </div>
         </div>
 
@@ -110,32 +161,74 @@ function AuditLog() {
 
   return (
     <div className="audit-page">
+
+      {/* =========================
+          HEADER
+          ========================= */}
       <div className="audit-header">
         <div>
           <h1>Audit Log</h1>
           <p>
-            Complete history of flagged comments and moderation actions.
+            Complete history of system activity and moderation actions.
           </p>
         </div>
-
-        <button
-          className="audit-refresh"
-          onClick={fetchAuditLog}
-        >
-          Refresh
-        </button>
       </div>
 
-      {auditLog.length === 0 ? (
+
+      {/* =========================
+          FILTER BUTTONS
+          ========================= */}
+      <div className="audit-filters">
+
+        <button
+          className={filter === "all" ? "active" : ""}
+          onClick={() => setFilter("all")}
+        >
+          All
+        </button>
+
+        <button
+          className={filter === "comment" ? "active" : ""}
+          onClick={() => setFilter("comment")}
+        >
+          Comments
+        </button>
+
+        <button
+          className={filter === "moderation" ? "active" : ""}
+          onClick={() => setFilter("moderation")}
+        >
+          Moderator Decisions
+        </button>
+
+        <button
+          className={filter === "other" ? "active" : ""}
+          onClick={() => setFilter("other")}
+        >
+          Other
+        </button>
+
+      </div>
+
+
+      {/* =========================
+          AUDIT TABLE
+          ========================= */}
+      {filteredAuditLog.length === 0 ? (
+
         <div className="audit-empty">
-          No flagged comments have been recorded yet.
+          No audit events found.
         </div>
+
       ) : (
+
         <div className="audit-table-container">
           <table className="audit-table">
+
             <thead>
               <tr>
                 <th>Timestamp</th>
+                <th>Event</th>
                 <th>Comment</th>
                 <th>Author</th>
                 <th>Score</th>
@@ -146,68 +239,133 @@ function AuditLog() {
             </thead>
 
             <tbody>
-              {auditLog.map((entry) => {
+
+              {filteredAuditLog.map((entry, index) => {
+
                 const score = getPrimaryScore(
-                  entry.prediction_scores
+                  entry.prediction_scores,
+                  entry.prediction_labels
                 );
 
+                /*
+                 * Use the appropriate timestamp depending
+                 * on what type of event this is.
+                 */
+                const timestamp =
+                  entry.type === "moderation"
+                    ? entry.moderation_timestamp
+                    : entry.comment_timestamp;
+
                 return (
-                  <tr key={entry.flag_id}>
+                  <tr
+                    key={
+                      entry.type === "moderation"
+                        ? `moderation-${entry.moderation_decision_id}`
+                        : entry.type === "comment"
+                          ? `comment-${entry.flag_id}`
+                          : `other-${entry.id || index}`
+                    }
+                  >
+
+                    {/* Timestamp */}
                     <td>
                       <span className="audit-time">
-                        {formatTimestamp(
-                          entry.moderation_timestamp ||
-                          entry.comment_timestamp
-                        )}
+                        {formatTimestamp(timestamp)}
                       </span>
                     </td>
 
+
+                    {/* Event type */}
+                    <td>
+                      <span
+                        className={`audit-event audit-event-${entry.type}`}
+                      >
+                        {getEventLabel(entry.type)}
+                      </span>
+                    </td>
+
+
+                    {/* Comment */}
                     <td>
                       <div className="audit-comment">
-                        {entry.comment_content}
+                        {entry.comment_content || "—"}
                       </div>
                     </td>
 
+
+                    {/* Author */}
                     <td>
                       {entry.author_username || "Unknown"}
                     </td>
 
+
+                    {/* Score */}
                     <td>
-                      <span className="audit-score">
-                        {formatScore(score)}
-                      </span>
+                      {entry.type === "comment" ? (
+                        <span className="audit-score">
+                          {formatScore(score)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
 
+
+                    {/* Model */}
                     <td>
-                      <span className="audit-model">
-                        {entry.model_name || "—"}
-                      </span>
+                      {entry.type === "comment" ? (
+                        <span className="audit-model">
+                          {entry.model_name || "—"}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
 
+
+                    {/* Moderator */}
                     <td>
-                      {entry.moderator_username || "—"}
+                      {entry.type === "moderation"
+                        ? entry.moderator_username || "Unknown"
+                        : "—"}
                     </td>
 
+
+                    {/* Action */}
                     <td>
-                      <span
-                        className={`audit-action ${
-                          entry.decision === true
-                            ? "approved"
-                            : entry.decision === false
-                              ? "removed"
-                              : "pending"
-                        }`}
-                      >
-                        {getDecisionLabel(entry.decision)}
-                      </span>
+
+                      {entry.type === "moderation" ? (
+
+                        <span
+                          className={`audit-action ${
+                            entry.decision === true
+                              ? "approved"
+                              : entry.decision === false
+                                ? "removed"
+                                : "pending"
+                          }`}
+                        >
+                          {getDecisionLabel(entry.decision)}
+                        </span>
+
+                      ) : (
+
+                        "—"
+
+                      )}
+
                     </td>
+
                   </tr>
                 );
               })}
+
             </tbody>
           </table>
         </div>
+
       )}
+
     </div>
   );
 }

@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
 
+import { useMemo, useState, useEffect } from "react";
 import { useFlags } from "./useFlags.jsx";
 import { moderateComment } from "../api.jsx";
-
 import Stat from "./Stat.jsx";
 import CommentCard from "./CommentCard.jsx";
 
@@ -18,6 +17,16 @@ function ModerationDashboard() {
   const [filter, setFilter] = useState("all");
   const [moderating, setModerating] = useState(null);
   const [reviewedCount, setReviewedCount] = useState(0);
+
+  // Automatically refresh flags every 1 second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshFlags();
+    }, 1000);
+
+    // Clean up interval when component is unmounted
+    return () => clearInterval(interval);
+  }, [refreshFlags]);
 
   const filteredFlags = useMemo(() => {
     if (filter === "all") {
@@ -49,7 +58,8 @@ function ModerationDashboard() {
         decision,
       });
 
-      await refreshFlags();
+      // No manual refresh needed.
+      // The automatic 1-second refresh will update the list.
     } catch (err) {
       alert(err.message);
     } finally {
@@ -117,10 +127,6 @@ function ModerationDashboard() {
             High Risk
           </button>
         </div>
-
-        <button onClick={refreshFlags}>
-          Refresh
-        </button>
       </section>
 
       {error && (
@@ -154,3 +160,4 @@ function ModerationDashboard() {
 }
 
 export default ModerationDashboard;
+
