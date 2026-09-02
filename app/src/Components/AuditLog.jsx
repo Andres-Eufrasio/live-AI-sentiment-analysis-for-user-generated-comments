@@ -1,51 +1,43 @@
 import { useEffect, useState } from "react";
+
 import { fetchAuditLog } from "../api.jsx";
 
 function AuditLog() {
   const [auditLog, setAuditLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  
   const [filter, setFilter] = useState("all");
 
-  // move to api.jsx
-  async function fetchAuditLog() {
-    try {
-      setLoading(true);
-      setError(null);
+async function loadAuditLog() {
+  try {
+    setError(null);
 
-      const response = await fetch("http://localhost:8000/audit-log");
+    const data = await fetchAuditLog();
 
-      if (!response.ok) {
-        throw new Error("Failed to retrieve audit log");
+    // check for previous data
+    setAuditLog((previous) => {
+      if (JSON.stringify(previous) === JSON.stringify(data)) {
+        return previous;
       }
 
-      const data = await response.json();
-      setAuditLog(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      return data;
+    });
+  } catch (err) {
+    setError(err.message || "Failed to retrieve audit log");
+  } finally {
+    setLoading(false);
   }
+}
 
-  useEffect(() => {
-    fetchAuditLog();
-  }, []);
+useEffect(() => {
+  loadAuditLog();
 
+  const interval = setInterval(() => {
+    loadAuditLog();
+  }, 5000);
 
-    useEffect(() => {
-    fetchAuditLog();
-
-
-    const interval = setInterval(() => {
-        fetchAuditLog();
-    }, 5000);
-
- 
-    return () => clearInterval(interval);
-    }, []);
+  return () => clearInterval(interval);
+}, []);
 
 
 
@@ -78,7 +70,7 @@ function AuditLog() {
       return "—";
     }
 
-    return `${(Number(score) * 100).toFixed(1)}%`;
+    return `${Number(score * 100).toFixed(1)}%`;
   }
 
   function getDecisionLabel(decision) {
@@ -93,10 +85,8 @@ function AuditLog() {
     switch (type) {
       case "comment":
         return "Comment";
-
       case "moderation":
         return "Moderator Decision";
-
       default:
         return "Other";
     }
@@ -117,7 +107,8 @@ function AuditLog() {
     return entry.type === filter;
   });
 
-  if (loading) {
+  // Only show the loading screen when we have no data yet.
+  if (loading && auditLog.length === 0) {
     return (
       <div className="audit-page">
         <div className="audit-header">
@@ -136,7 +127,8 @@ function AuditLog() {
     );
   }
 
-  if (error) {
+  // Only show the full error screen if we have no existing data.
+  if (error && auditLog.length === 0) {
     return (
       <div className="audit-page">
         <div className="audit-header">
@@ -149,9 +141,8 @@ function AuditLog() {
         </div>
 
         <div className="audit-error">
-          {error}
-
-          <button onClick={fetchAuditLog}>
+          <span>{error}</span>
+          <button onClick={loadAuditLog}>
             Try again
           </button>
         </div>
@@ -161,10 +152,6 @@ function AuditLog() {
 
   return (
     <div className="audit-page">
-
-      {/* =========================
-          HEADER
-          ========================= */}
       <div className="audit-header">
         <div>
           <h1>Audit Log</h1>
@@ -172,14 +159,22 @@ function AuditLog() {
             Complete history of system activity and moderation actions.
           </p>
         </div>
+
+        {/* Optional: show refresh status without replacing the table */}
+        {loading && (
+          <span className="audit-refreshing">
+            Refreshing...
+          </span>
+        )}
+
+        {error && auditLog.length > 0 && (
+          <span className="audit-refresh-error">
+            Refresh failed
+          </span>
+        )}
       </div>
 
-
-      {/* =========================
-          FILTER BUTTONS
-          ========================= */}
       <div className="audit-filters">
-
         <button
           className={filter === "all" ? "active" : ""}
           onClick={() => setFilter("all")}
@@ -207,24 +202,15 @@ function AuditLog() {
         >
           Other
         </button>
-
       </div>
 
-
-      {/* =========================
-          AUDIT TABLE
-          ========================= */}
       {filteredAuditLog.length === 0 ? (
-
         <div className="audit-empty">
           No audit events found.
         </div>
-
       ) : (
-
         <div className="audit-table-container">
           <table className="audit-table">
-
             <thead>
               <tr>
                 <th>Timestamp</th>
@@ -239,43 +225,32 @@ function AuditLog() {
             </thead>
 
             <tbody>
-
               {filteredAuditLog.map((entry, index) => {
-
                 const score = getPrimaryScore(
                   entry.prediction_scores,
                   entry.prediction_labels
                 );
 
-                /*
-                 * Use the appropriate timestamp depending
-                 * on what type of event this is.
-                 */
                 const timestamp =
                   entry.type === "moderation"
                     ? entry.moderation_timestamp
                     : entry.comment_timestamp;
 
-                return (
-                  <tr
-                    key={
-                      entry.type === "moderation"
-                        ? `moderation-${entry.moderation_decision_id}`
-                        : entry.type === "comment"
-                          ? `comment-${entry.flag_id}`
-                          : `other-${entry.id || index}`
-                    }
-                  >
+                const rowKey =
+                  entry.type === "moderation"
+                    ? `moderation-${entry.moderation_decision_id}`
+                    : entry.type === "comment"
+                      ? `comment-${entry.flag_id}`
+                      : `other-${entry.id || index}`;
 
-                    {/* Timestamp */}
+                return (
+                  <tr key={rowKey}>
                     <td>
                       <span className="audit-time">
                         {formatTimestamp(timestamp)}
                       </span>
                     </td>
 
-
-                    {/* Event type */}
                     <td>
                       <span
                         className={`audit-event audit-event-${entry.type}`}
@@ -284,22 +259,16 @@ function AuditLog() {
                       </span>
                     </td>
 
-
-                    {/* Comment */}
                     <td>
                       <div className="audit-comment">
                         {entry.comment_content || "—"}
                       </div>
                     </td>
 
-
-                    {/* Author */}
                     <td>
                       {entry.author_username || "Unknown"}
                     </td>
 
-
-                    {/* Score */}
                     <td>
                       {entry.type === "comment" ? (
                         <span className="audit-score">
@@ -310,8 +279,6 @@ function AuditLog() {
                       )}
                     </td>
 
-
-                    {/* Model */}
                     <td>
                       {entry.type === "comment" ? (
                         <span className="audit-model">
@@ -322,20 +289,14 @@ function AuditLog() {
                       )}
                     </td>
 
-
-                    {/* Moderator */}
                     <td>
                       {entry.type === "moderation"
                         ? entry.moderator_username || "Unknown"
                         : "—"}
                     </td>
 
-
-                    {/* Action */}
                     <td>
-
                       {entry.type === "moderation" ? (
-
                         <span
                           className={`audit-action ${
                             entry.decision === true
@@ -347,25 +308,17 @@ function AuditLog() {
                         >
                           {getDecisionLabel(entry.decision)}
                         </span>
-
                       ) : (
-
                         "—"
-
                       )}
-
                     </td>
-
                   </tr>
                 );
               })}
-
             </tbody>
           </table>
         </div>
-
       )}
-
     </div>
   );
 }

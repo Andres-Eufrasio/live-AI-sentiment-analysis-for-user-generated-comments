@@ -18,13 +18,13 @@ function ModerationDashboard() {
   const [moderating, setModerating] = useState(null);
   const [reviewedCount, setReviewedCount] = useState(0);
 
-  // Automatically refresh flags every 1 second
+  
   useEffect(() => {
     const interval = setInterval(() => {
       refreshFlags();
     }, 1000);
 
-    // Clean up interval when component is unmounted
+    
     return () => clearInterval(interval);
   }, [refreshFlags]);
 
