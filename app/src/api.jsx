@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react";
+import ModerationEventService from "./services/ModerationEventService";
 
 const API_URL = "http://host.docker.internal:8000";
 
@@ -46,7 +45,23 @@ export async function moderateComment({
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || "Moderation failed");
+
+    console.error("POST /moderate failed:", error);
+
+    if (Array.isArray(error.detail)) {
+      const messages = error.detail
+        .map((item) => {
+          const location = item.loc?.join(".") ?? "unknown";
+          return `${location}: ${item.msg}`;
+        })
+        .join("\n");
+
+      throw new Error(messages);
+    }
+
+    throw new Error(
+      error.detail || `Moderation failed (${response.status})`
+    );
   }
 
   return response.json();
@@ -65,5 +80,4 @@ export async function fetchAuditLog() {
 
   return response.json();
 }
-
 

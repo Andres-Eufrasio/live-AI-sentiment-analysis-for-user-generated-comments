@@ -227,20 +227,34 @@ def get_predictions():
 @app.post("/moderate", status_code=201)
 def moderate_post(modDec: ModerationDecisionIn):
     conn = DatabaseCon.get_conn()
+
     try:
         db = DatabaseTools(conn)
-        db.create_moderation_decision(
+
+        moderation = db.create_moderation_decision(
             modDec.comment_id,
             modDec.moderator_id,
             modDec.flag_id,
             modDec.decision,
             modDec.prediction_id
         )
-        db.deactivate_flag(
-            modDec.flag_id
-        )
+
+        db.deactivate_flag(modDec.flag_id)
+
+        return {
+            "status": "success",
+            "moderation": moderation,
+            "comment_id": str(modDec.comment_id),
+            "flag_id": str(modDec.flag_id),
+            "decision": modDec.decision,
+        }
+
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Flags were not retrieved: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Moderation failed: {str(e)}"
+        )
+
     finally:
         DatabaseCon.put_conn(conn)
 

@@ -4,6 +4,7 @@ import { useFlags } from "./useFlags.jsx";
 import { moderateComment } from "../api.jsx";
 import Stat from "./Stat.jsx";
 import CommentCard from "./CommentCard.jsx";
+import ModerationEventService from "../services/ModerationEventService";
 
 function ModerationDashboard() {
   const {
@@ -46,6 +47,7 @@ function ModerationDashboard() {
     });
   }, [flags, filter]);
 
+
   async function handleModeration(flag, decision) {
     try {
       setModerating(flag.id);
@@ -57,16 +59,13 @@ function ModerationDashboard() {
         predictionId: flag.prediction_id,
         decision,
       });
-
-      // No manual refresh needed.
-      // The automatic 1-second refresh will update the list.
     } catch (err) {
       alert(err.message);
     } finally {
       setModerating(null);
-      setReviewedCount((count) => count + 1);
     }
   }
+
 
   return (
     <div className="dashboard">
