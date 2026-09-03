@@ -23,7 +23,7 @@ app.add_middleware(
 """Note pad
 replace port with enviroment var
 I need to put more contraints on comments doing things like .lower and removing emojis for normalization and for it to work better with the AI
-also need to put that into the tests
+need to change flagging amount
 """
 
 """
@@ -65,6 +65,9 @@ class Model_tools:
         #convert to list from dict
         model_labels = list(self.model.get_labels().values())
         return model_name, model_labels
+    
+    def get_labels(self):
+        return list(self.model.get_labels().values())
     
     def get_name(self):
         return self.model.get_name()
@@ -134,7 +137,7 @@ class ChangeModelIn(BaseModel):
 
 """
 Notes
-Implement not just using toxic
+
 """
 
 """My background tasks"""
@@ -147,8 +150,8 @@ def process_comment(comment: CommentIn):
         result = system.predict(comment.content)
 
         print(result)
-
-        flagged = result.get("toxic", 0) > 0.4
+        confidence = list(result.values())
+        flagged = confidence[0] > 0.4
 
         comment_id = db.create_comment(
             comment.content,
@@ -322,10 +325,11 @@ def change_model(model: ChangeModelIn):
                 "error": "Model failed to load"
             }
 
-        database_result = db.switch_model(model.model_name)
+        database_result = db.switch_model(model.model_name, system.get_labels())
 
         if not database_result:
             system.switch_model(old_model)
+            print("Model loaded, but database update failed so model rolled back")
             return {
                 "success": False,
                 "error": "Model loaded, but database update failed so model rolled back"
@@ -342,10 +346,12 @@ def change_model(model: ChangeModelIn):
         }
 
     except Exception as e:
+        print(f"Model could not be changed: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Model could not be changed: {str(e)}"
         )
+        
 
     finally:
         DatabaseCon.put_conn(conn)
@@ -369,6 +375,24 @@ def get_active_model():
 
     return name
 
+@app.get("/model/labels", status_code=200)
+def get_active_model():
+    conn = DatabaseCon.get_conn()
+
+    try:
+        db = DatabaseTools(conn)
+        name = db.get_active_model_labels()
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"labels could not be accessed {str(e)}"
+        )
+
+    finally:
+        DatabaseCon.put_conn(conn)
+
+    return name
 
 
 if __name__ == "__main__":

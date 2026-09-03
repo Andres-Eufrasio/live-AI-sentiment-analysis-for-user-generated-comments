@@ -87,9 +87,19 @@ class DatabaseTools:
         with self.conn.cursor() as cur:
             #Returns either 1 or 0 indexes
             cur.execute("SELECT name FROM model WHERE active = TRUE;")
-            result = cur.fetchall()
+            result = cur.fetchone()
         if result is None:
             return ""
+        else:
+            return result[0]
+    
+    def get_active_model_labels(self) -> list:
+        with self.conn.cursor() as cur:
+            #Returns either 1 or 0 indexes
+            cur.execute("SELECT labels FROM model WHERE active = TRUE;")
+            result = cur.fetchall()
+        if not result:
+            return []
         else:
             return result[0][0]
     
@@ -537,20 +547,26 @@ class DatabaseTools:
 
 
 
-    def switch_model(self, model_name: str, labels: list | None = None) -> dict:
+    def switch_model(
+        self,
+        model_name: str,
+        labels: list | None = None
+    ) -> dict:
         """
         Switch the active AI model.
 
-        If the model doesn't already exist in the model table, it is
-        registered first, with an empty labels list if none is provided.
+        If the model doesn't already exist, register it.
+        If it exists, update its labels.
         Only one model can be active at a time.
         """
+
         if labels is None:
             labels = []
 
         try:
             with self.conn.cursor() as cur:
 
+                # Check whether model exists
                 cur.execute(
                     """
                     SELECT name, labels
@@ -563,6 +579,7 @@ class DatabaseTools:
                 model = cur.fetchone()
 
                 if model is None:
+                    # Register new model
                     cur.execute(
                         """
                         INSERT INTO model (name, labels, active)
@@ -573,7 +590,21 @@ class DatabaseTools:
                     )
                     model = cur.fetchone()
 
-                # Deactivate the current model
+                else:
+                    # Model already exists:
+                    # update its labels
+                    cur.execute(
+                        """
+                        UPDATE model
+                        SET labels = %s
+                        WHERE name = %s
+                        RETURNING name, labels;
+                        """,
+                        (labels, model_name),
+                    )
+                    model = cur.fetchone()
+
+                # Deactivate current model
                 cur.execute(
                     """
                     UPDATE model
@@ -582,7 +613,7 @@ class DatabaseTools:
                     """
                 )
 
-                # Activate the requested model
+                # Activate requested model
                 cur.execute(
                     """
                     UPDATE model
@@ -604,7 +635,7 @@ class DatabaseTools:
             self.conn.rollback()
             raise RuntimeError(
                 f"Failed to switch model: {e}"
-            )
+            ) from e
 
 
   

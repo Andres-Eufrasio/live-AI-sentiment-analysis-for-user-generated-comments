@@ -19,6 +19,7 @@ class SentimentAnalysis:
         self.tokenizer = None
         self.model = None
         self.labels = None
+        self.labels_list = ["invalid"]
 
         self.load_model(model_name)
 
@@ -65,6 +66,8 @@ class SentimentAnalysis:
                     local_files_only=True,
                 )
 
+                
+
             else:
                 print(f"Downloading model: {model_name}")
 
@@ -79,6 +82,7 @@ class SentimentAnalysis:
                 self.model.save_pretrained(self.path)
 
             self.labels = self.model.config.id2label
+            print(self.labels)
             self.model.eval()
 
             return True

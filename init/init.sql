@@ -190,6 +190,6 @@ INSERT INTO post (id, content, author_id)
 VALUES
     ('16c05c49-419b-48b8-9813-b573d7f6cb99', 'This is a post', 'user1');
 
-INSERT INTO model (name, labels)
+INSERT INTO model (name, labels, active)
 VALUES
-    ('unitary/toxic-bert', ARRAY['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']);
+    ('unitary/toxic-bert', ARRAY['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate'], TRUE);
