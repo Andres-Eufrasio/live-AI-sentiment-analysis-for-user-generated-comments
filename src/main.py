@@ -29,19 +29,32 @@ also need to put that into the tests
 """
 Load model
 """
-class Model_tools():
+class Model_tools:
     def __init__(self):
+        self.model = None
+        self.name = None
+        self.labels = None
         self.load_model()
-        
+
     def load_model(self):
+        conn = DatabaseCon.get_conn()
+
         try:
-            self.model=SentimentAnalysis()
+            db = DatabaseTools(conn)
+
+            active_model = db.get_active_model()
+            model_name = active_model or "unitary/toxic-bert"
+
+            self.model = SentimentAnalysis(model_name=model_name)
             self.name, self.labels = self.get_info()
-            #flush info to ensure it gets printed
-            print("Model loaded")
-            print(f"Model name: {self.name} \nLabels: {self.labels}", flush=True)
+
         except Exception as e:
-            raise RuntimeError(f"Model failed to load: {e}")
+            raise RuntimeError(
+                f"Failure to load model: {e}"
+            ) from e
+
+        finally:
+            DatabaseCon.put_conn(conn)
 
     def predict(self,text : str):
         return self.model.predict(text)
@@ -52,6 +65,15 @@ class Model_tools():
         #convert to list from dict
         model_labels = list(self.model.get_labels().values())
         return model_name, model_labels
+    
+    def get_name(self):
+        return self.model.get_name()
+    
+    def switch_model(self, model_name) -> bool:
+        return self.model.switch_model(model_name)
+
+    
+    
 system = Model_tools() 
 
 """Language detection"""
@@ -103,6 +125,11 @@ class ModerationDecisionIn(BaseModel):
     flag_id: UUID
     prediction_id: Optional[UUID] = None
     decision: bool      
+
+class ChangeModelIn(BaseModel):
+    model_name: str
+
+
 
 
 """
@@ -277,6 +304,70 @@ def get_audit_log():
         DatabaseCon.put_conn(conn)
 
     return audit_log
+
+@app.post("/model", status_code=201)
+def change_model(model: ChangeModelIn):
+    conn = DatabaseCon.get_conn()
+
+    try:
+        db = DatabaseTools(conn)
+
+        old_model, _ = system.get_info()
+
+        system_result = system.switch_model(model.model_name)
+
+        if not system_result:
+            return {
+                "success": False,
+                "error": "Model failed to load"
+            }
+
+        database_result = db.switch_model(model.model_name)
+
+        if not database_result:
+            system.switch_model(old_model)
+            return {
+                "success": False,
+                "error": "Model loaded, but database update failed so model rolled back"
+            }
+
+        new_model, _ = system.get_info()
+
+        if old_model != new_model:
+            print("Model name change successful")
+
+        return {
+            "success": True,
+            "model": system.get_name()
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Model could not be changed: {str(e)}"
+        )
+
+    finally:
+        DatabaseCon.put_conn(conn)
+
+@app.get("/model", status_code=200)
+def get_active_model():
+    conn = DatabaseCon.get_conn()
+
+    try:
+        db = DatabaseTools(conn)
+        name = db.get_active_model()
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Name could not be accessed {str(e)}"
+        )
+
+    finally:
+        DatabaseCon.put_conn(conn)
+
+    return name
 
 
 

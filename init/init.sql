@@ -115,6 +115,10 @@ CREATE INDEX idx_moddec_comment     ON moderation_decision(comment_id);
 CREATE INDEX idx_moddec_moderator   ON moderation_decision(moderator_id);
 CREATE INDEX idx_moddec_flag        ON moderation_decision(flag_id);
 
+-- ------------------------------------------------------------
+-- Rules
+-- ------------------------------------------------------------
+
 CREATE UNIQUE INDEX active_model
     ON model (active)
     WHERE active = TRUE;
@@ -158,6 +162,12 @@ WHERE NOT EXISTS (
     FROM moderation_decision md
     WHERE md.flag_id = f.id
 );
+
+CREATE OR REPLACE VIEW current_model AS
+SELECT
+    name, labels
+FROM model
+WHERE active = TRUE;
 
 
 -- ------------------------------------------------------------

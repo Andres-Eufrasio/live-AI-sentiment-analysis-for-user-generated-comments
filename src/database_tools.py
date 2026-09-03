@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from uuid import UUID
 
+
 psycopg2.extras.register_uuid()
 """
 Notes add some comments on the tooling
@@ -90,7 +91,7 @@ class DatabaseTools:
         if result is None:
             return ""
         else:
-            return result[0]
+            return result[0][0]
     
 
     """
@@ -536,8 +537,76 @@ class DatabaseTools:
 
 
 
+    def switch_model(self, model_name: str, labels: list | None = None) -> dict:
+        """
+        Switch the active AI model.
+
+        If the model doesn't already exist in the model table, it is
+        registered first, with an empty labels list if none is provided.
+        Only one model can be active at a time.
+        """
+        if labels is None:
+            labels = []
+
+        try:
+            with self.conn.cursor() as cur:
+
+                cur.execute(
+                    """
+                    SELECT name, labels
+                    FROM model
+                    WHERE name = %s;
+                    """,
+                    (model_name,)
+                )
+
+                model = cur.fetchone()
+
+                if model is None:
+                    cur.execute(
+                        """
+                        INSERT INTO model (name, labels, active)
+                        VALUES (%s, %s, FALSE)
+                        RETURNING name, labels;
+                        """,
+                        (model_name, labels),
+                    )
+                    model = cur.fetchone()
+
+                # Deactivate the current model
+                cur.execute(
+                    """
+                    UPDATE model
+                    SET active = FALSE
+                    WHERE active = TRUE;
+                    """
+                )
+
+                # Activate the requested model
+                cur.execute(
+                    """
+                    UPDATE model
+                    SET active = TRUE
+                    WHERE name = %s;
+                    """,
+                    (model_name,)
+                )
+
+                self.conn.commit()
+
+                return {
+                    "name": model[0],
+                    "labels": model[1],
+                    "active": True
+                }
+
+        except Exception as e:
+            self.conn.rollback()
+            raise RuntimeError(
+                f"Failed to switch model: {e}"
+            )
 
 
-
+  
 
 
