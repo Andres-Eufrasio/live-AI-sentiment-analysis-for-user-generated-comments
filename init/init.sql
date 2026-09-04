@@ -82,7 +82,8 @@ CREATE TABLE prediction (
     id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     flag_id     UUID    REFERENCES flag(id) ON DELETE CASCADE,
     model_id    TEXT    NOT NULL REFERENCES model(name) ON DELETE RESTRICT,
-    confidence  FLOAT[]   NOT NULL
+    confidence  FLOAT[]   NOT NULL,
+    time_stamp      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ------------------------------------------------------------
@@ -98,6 +99,20 @@ CREATE TABLE moderation_decision (
     time_stamp      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ------------------------------------------------------------
+--  Settings table
+-- ------------------------------------------------------------
+CREATE TABLE settings (
+    user_id TEXT PRIMARY KEY,
+    dark_mode BOOLEAN NOT NULL DEFAULT false,
+    flag_threshold INT NOT NULL
+        CHECK (flag_threshold >= 0 AND flag_threshold <= 100),
+
+    CONSTRAINT settings_user_fk
+        FOREIGN KEY (user_id)
+        REFERENCES "user"(id)
+        ON DELETE CASCADE
+);
 -- ============================================================
 -- Indexes
 -- ============================================================
@@ -169,13 +184,20 @@ SELECT
 FROM model
 WHERE active = TRUE;
 
-
 -- ------------------------------------------------------------
--- Test values
+-- Innitial values
 -- ------------------------------------------------------------
 INSERT INTO "moderator" (id, username, password_hash)
 VALUES
-('8410a16f-032d-4ebf-a128-c0bfbb4e7df4', 'admin', 'hash');
+    ('8410a16f-032d-4ebf-a128-c0bfbb4e7df4', 'admin', '5f4dcc3b5aa765d61d8327deb882cf99');
+
+INSERT INTO "settings" (appearance, flag_threshold, '8410a16f-032d-4ebf-a128-c0bfbb4e7df4')
+VALUES
+    (FALSE, 70);
+-- ------------------------------------------------------------
+-- Test values
+-- ------------------------------------------------------------
+
 
 INSERT INTO "user" (id, username, created_at, banned)
 VALUES

@@ -73,7 +73,11 @@ class Model_tools:
         return self.model.get_name()
     
     def switch_model(self, model_name) -> bool:
-        return self.model.switch_model(model_name)
+        result = self.model.switch_model(model_name)
+        if result:
+            self.name, self.labels = self.get_info()
+        return result
+    
 
     
     
