@@ -379,6 +379,25 @@ def get_active_model():
 
     return name
 
+@app.get("/model/list", status_code=200)
+def get_model_list():
+    conn = DatabaseCon.get_conn()
+
+    try:
+        db = DatabaseTools(conn)
+        model_list = db.get_model_list()
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"labels could not be accessed {str(e)}"
+        )
+
+    finally:
+        DatabaseCon.put_conn(conn)
+
+    return model_list
+
 @app.get("/model/labels", status_code=200)
 def get_active_model():
     conn = DatabaseCon.get_conn()

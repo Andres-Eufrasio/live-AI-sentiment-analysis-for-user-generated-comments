@@ -84,25 +84,46 @@ class DatabaseTools:
         
 
     def get_active_model(self) -> str:
-        with self.conn.cursor() as cur:
-            #Returns either 1 or 0 indexes
-            cur.execute("SELECT name FROM model WHERE active = TRUE;")
-            result = cur.fetchone()
-        if result is None:
-            return ""
-        else:
-            return result[0]
+        try:
+            with self.conn.cursor() as cur:
+                #Returns either 1 or 0 indexes
+                cur.execute("SELECT name FROM model WHERE active = TRUE;")
+                result = cur.fetchone()
+            if result is None:
+                return ""
+            else:
+                return result[0]
+        except Exception as e:
+            self.conn.rollback()
+            raise RuntimeError(f"Failed to get active model name: {e}")  
     
     def get_active_model_labels(self) -> list:
-        with self.conn.cursor() as cur:
-            #Returns either 1 or 0 indexes
-            cur.execute("SELECT labels FROM model WHERE active = TRUE;")
-            result = cur.fetchall()
-        if not result:
-            return []
-        else:
-            return result[0][0]
+        try:
+            with self.conn.cursor() as cur:
+                #Returns either 1 or 0 indexes
+                cur.execute("SELECT labels FROM model WHERE active = TRUE;")
+                result = cur.fetchall()
+            if not result:
+                return []
+            else:
+                return result[0][0]
+        except Exception as e:
+            self.conn.rollback()
+            raise RuntimeError(f"Failed to get labels: {e}")  
     
+    def get_model_list(self) -> list:
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("SELECT name FROM model;")
+                result = cur.fetchall()
+
+            return [row[0] for row in result]
+
+        except Exception as e:
+            self.conn.rollback()
+            raise RuntimeError(f"Failed to get model list: {e}")
+
+
 
     """
     Inserts/creations

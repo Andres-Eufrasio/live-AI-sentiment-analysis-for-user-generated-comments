@@ -28,7 +28,7 @@ CREATE TABLE moderator (
 CREATE TABLE model (
     name        TEXT    PRIMARY KEY,
     labels       TEXT[]    NOT NULL,
-    active BOOLEAN NOT NULL DEFAULT FALSE
+    active BOOLEAN NOT NULL DEFAULT false
 );
 
 -- ------------------------------------------------------------
@@ -191,9 +191,9 @@ INSERT INTO "moderator" (id, username, password_hash)
 VALUES
     ('8410a16f-032d-4ebf-a128-c0bfbb4e7df4', 'admin', '5f4dcc3b5aa765d61d8327deb882cf99');
 
-INSERT INTO "settings" (appearance, flag_threshold, '8410a16f-032d-4ebf-a128-c0bfbb4e7df4')
-VALUES
-    (FALSE, 70);
+INSERT INTO settings (user_id, appearance, flag_threshold)
+VALUES 
+    ('8410a16f-032d-4ebf-a128-c0bfbb4e7df4', false, 70);
 -- ------------------------------------------------------------
 -- Test values
 -- ------------------------------------------------------------

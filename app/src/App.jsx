@@ -4,6 +4,7 @@ import Settings from "./Components/Settings.jsx";
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import AuditLog from "./Components/AuditLog.jsx";
 import "./App.css";
+import ModelDashboard from "./Components/ModelDashboard.jsx";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -67,14 +68,14 @@ function App() {
 
 
             <NavLink
-              to="/reviewed"
+              to="/models"
               className={({ isActive }) =>
                 isActive ? "sidebar-link active" : "sidebar-link"
               }
               title={!sidebarOpen ? "Reviewed" : ""}
             >
-              <span className="sidebar-icon">✓</span>
-              {sidebarOpen && <span>Reviewed</span>}
+              <span className="sidebar-icon">◈</span>
+              {sidebarOpen && <span>models</span>}
             </NavLink>
 
             <NavLink
@@ -132,12 +133,9 @@ function App() {
             />
 
             <Route
-              path="/reviewed"
+              path="/models"
               element={
-                <div className="page-placeholder">
-                  <h2>Reviewed</h2>
-                  <p>Reviewed comments will appear here.</p>
-                </div>
+                <ModelDashboard/>
               }
             />
 

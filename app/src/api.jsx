@@ -1,4 +1,5 @@
 import ModerationEventService from "./services/ModerationEventService";
+import ModelDashboard from "./Components/ModelDashboard.jsx";
 
 const API_URL = "http://host.docker.internal:8000";
 
@@ -81,3 +82,69 @@ export async function fetchAuditLog() {
   return response.json();
 }
 
+
+
+
+export async function changeModel(modelName) {
+  const response = await fetch(`${API_URL}/model`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model_name: modelName,
+    }),
+  });
+
+  if (!response.ok) {
+    let error;
+
+    try {
+      error = await response.json();
+    } catch {
+      error = {};
+    }
+
+    console.error("POST /model failed:", error);
+
+    throw new Error(
+      error.detail ||
+        error.error ||
+        `Model change failed (${response.status})`
+    );
+  }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || "Model failed to load");
+  }
+
+  return result;
+}
+
+
+
+export async function getModel() {
+  const response = await fetch(`${API_URL}/model`);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(
+      `Failed to retrieve model (${response.status}): ${errorText}`
+    );
+  }
+
+  return response.json();
+}
+
+export async function getModelList() {
+  const response = await fetch("/model/list");
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch model list");
+  }
+
+  return response.json();
+}
